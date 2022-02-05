@@ -10,7 +10,7 @@ These programs were developed in the early 2000s at the BFL lab.
 ## Installation warning
 
 For the moment this distribution contains the code as
-exactracted from a custom installation at the BFL lab. As
+extracted from a custom installation at the BFL lab. As
 such it still contains a bunch of hardcoded filesystem paths
 specific to the original machines. Some cleanup and adjustements
 are still necessary and forthcoming (Feb, 2022).
