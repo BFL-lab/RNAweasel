@@ -33,7 +33,7 @@ provided here:
 * puzzle
 * dnadist
 
-# Contact
+## Contact
 
 For help with this distribution, create a GitHub ticket or
 contact `pierre.rioux@mcgill.ca`
