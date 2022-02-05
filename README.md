@@ -10,8 +10,8 @@ These programs were developed in the early 2000s at the BFL lab.
 ## Installation warning
 
 For the moment this distribution contains the code as
-exactracted from a custom installation at the BFL lab, and as
-such still contains a bunch of hardcoded filesystem paths
+exactracted from a custom installation at the BFL lab. As
+such it still contains a bunch of hardcoded filesystem paths
 specific to the original machines. Some cleanup and adjustements
 are still necessary and forthcoming (Feb, 2022).
 
@@ -19,7 +19,7 @@ are still necessary and forthcoming (Feb, 2022).
 
 The original sources were maintained in a CVS repository and the
 exact history of the files have not been preserved. However,
-the subdirectory `cvs_history` contains a ull set of the outputs
+the subdirectory `cvs_history` contains a full set of the outputs
 of the `cvs log` and `cvs annotate` commands for each source file.
 This provides some information about the authors of these programs.
 
