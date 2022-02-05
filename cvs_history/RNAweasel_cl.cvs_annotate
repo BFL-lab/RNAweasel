@@ -1,0 +1,1731 @@
+1.3          (riouxp   22-Jan-07): #!/usr/bin/perl -w
+1.21         (nbeck    04-Aug-09): use Term::ANSIColor qw(:constants);
+1.1          (riouxp   16-Nov-06): use strict;
+1.1          (riouxp   16-Nov-06): use File::Copy;
+1.1          (riouxp   16-Nov-06): use File::Basename;
+1.9          (riouxp   02-Feb-07): use IO::File;
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #######################################
+1.1          (riouxp   16-Nov-06): # RNAweasel_cl : Command line version #
+1.1          (riouxp   16-Nov-06): #######################################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #############################################################################
+1.1          (riouxp   16-Nov-06): #
+1.21         (nbeck    04-Aug-09): #    $Id: RNAweasel_cl,v 1.20 2008/08/04 20:54:27 riouxp Exp $
+1.2          (riouxp   14-Dec-06): #
+1.2          (riouxp   14-Dec-06): #    $Log: RNAweasel_cl,v $
+1.21         (nbeck    04-Aug-09): #    Revision 1.20  2008/08/04 20:54:27  riouxp
+1.21         (nbeck    04-Aug-09): #    Fixed coordinates computation in fullalignment report.
+1.21         (nbeck    04-Aug-09): #
+1.20         (riouxp   04-Aug-08): #    Revision 1.19  2008/06/27 18:11:53  riouxp
+1.20         (riouxp   04-Aug-08): #    Added doc for -L.
+1.20         (riouxp   04-Aug-08): #
+1.19         (riouxp   27-Jun-08): #    Revision 1.18  2008/03/13 17:22:05  riouxp
+1.19         (riouxp   27-Jun-08): #    Added -L option which allows the user to give the program a keyword
+1.19         (riouxp   27-Jun-08): #    that will end up in the .log output file.
+1.19         (riouxp   27-Jun-08): #
+1.18         (riouxp   13-Mar-08): #    Revision 1.17  2008/03/07 18:38:10  riouxp
+1.18         (riouxp   13-Mar-08): #    Added more doc in usage statement.
+1.18         (riouxp   13-Mar-08): #
+1.17         (riouxp   07-Mar-08): #    Revision 1.16  2008/02/22 21:16:41  riouxp
+1.17         (riouxp   07-Mar-08): #    Added option -o to let the user specify the name of the final
+1.17         (riouxp   07-Mar-08): #    fullalignment file and its .log. So "-o abcd" will create the two
+1.17         (riouxp   07-Mar-08): #    final files "abcd" and "abcd.log" (which correspond to the default
+1.17         (riouxp   07-Mar-08): #    names MODELFILE-nn.fullalignment and MODELFILE-nn.fullalignment.log)
+1.17         (riouxp   07-Mar-08): #
+1.16         (riouxp   22-Feb-08): #    Revision 1.15  2008/02/09 00:10:26  riouxp
+1.16         (riouxp   22-Feb-08): #    Fixed one and for all problems with file naming for temp files,
+1.16         (riouxp   22-Feb-08): #    that prevented many instances of this program to run concurently.
+1.16         (riouxp   22-Feb-08): #
+1.15         (riouxp   09-Feb-08): #    Revision 1.14  2007/04/03 21:08:54  riouxp
+1.15         (riouxp   09-Feb-08): #    Adjusted layout of report.
+1.15         (riouxp   09-Feb-08): #
+1.14         (riouxp   03-Apr-07): #    Revision 1.13  2007/04/03 19:11:07  riouxp
+1.14         (riouxp   03-Apr-07): #    Even more changes to improve memory handling using references.
+1.14         (riouxp   03-Apr-07): #
+1.13         (riouxp   03-Apr-07): #    Revision 1.12  2007/04/03 18:39:10  riouxp
+1.13         (riouxp   03-Apr-07): #    Changed how some subroutine receive and return data structures
+1.13         (riouxp   03-Apr-07): #    so that references are used instead of whole array copying.
+1.13         (riouxp   03-Apr-07): #
+1.12         (riouxp   03-Apr-07): #    Revision 1.11  2007/02/07 20:41:09  riouxp
+1.12         (riouxp   03-Apr-07): #    The new "-s" option now reinsterts the stripped left and right
+1.12         (riouxp   03-Apr-07): #    regions of the structure, along with flanking alignments, and
+1.12         (riouxp   03-Apr-07): #    also adjusts the reported match coordinates.
+1.12         (riouxp   03-Apr-07): #
+1.11         (riouxp   07-Feb-07): #    Revision 1.10  2007/02/02 03:26:22  riouxp
+1.11         (riouxp   07-Feb-07): #    Removed debugging traces that are no longer necessary.
+1.11         (riouxp   07-Feb-07): #
+1.10         (riouxp   02-Feb-07): #    Revision 1.9  2007/02/02 03:18:53  riouxp
+1.10         (riouxp   02-Feb-07): #    Added "-s" option that tells the program to strip leading and
+1.10         (riouxp   02-Feb-07): #    trailing elements of the training set that are outside the
+1.10         (riouxp   02-Feb-07): #    leftmost and rightmost selected elements of erpin. This result
+1.10         (riouxp   02-Feb-07): #    in a new training set created just beside the original one,
+1.10         (riouxp   02-Feb-07): #    with a "-S" inserted in the filename just before the ".epn";
+1.10         (riouxp   02-Feb-07): #    all results file are afterwards created with this convention.
+1.10         (riouxp   02-Feb-07): #
+1.9          (riouxp   02-Feb-07): #    Revision 1.8  2007/01/30 22:38:39  riouxp
+1.9          (riouxp   02-Feb-07): #    Fixed bracket routine to show full sequence of an element that
+1.9          (riouxp   02-Feb-07): #    was selected on the command line.
+1.9          (riouxp   02-Feb-07): #
+1.8          (riouxp   30-Jan-07): #    Revision 1.7  2007/01/30 19:39:37  riouxp
+1.8          (riouxp   30-Jan-07): #    Rewrote the bracket system for the logfile.
+1.8          (riouxp   30-Jan-07): #
+1.7          (riouxp   30-Jan-07): #    Revision 1.6  2007/01/29 21:08:51  riouxp
+1.7          (riouxp   30-Jan-07): #    Improved printed messages as requested by Franz.
+1.7          (riouxp   30-Jan-07): #
+1.6          (riouxp   29-Jan-07): #    Revision 1.5  2007/01/23 20:32:05  riouxp
+1.6          (riouxp   29-Jan-07): #    Added RCS version number in output; removed redundant missing
+1.6          (riouxp   29-Jan-07): #    prototypes that caused spurious warnings with -w.
+1.6          (riouxp   29-Jan-07): #
+1.5          (riouxp   23-Jan-07): #    Revision 1.4  2007/01/22 18:22:43  riouxp
+1.5          (riouxp   23-Jan-07): #    Quick fix for warning in clumsy parsing loop.
+1.5          (riouxp   23-Jan-07): #
+1.4          (riouxp   22-Jan-07): #    Revision 1.3  2007/01/22 17:11:18  riouxp
+1.4          (riouxp   22-Jan-07): #    Fixed a few syntactic bugs. Completely re-engineered the
+1.4          (riouxp   22-Jan-07): #    subroutine modifyModelSeq() that restructure the erpin output
+1.4          (riouxp   22-Jan-07): #    alignment.
+1.4          (riouxp   22-Jan-07): #
+1.3          (riouxp   22-Jan-07): #    Revision 1.2  2006/12/14 21:11:40  riouxp
+1.3          (riouxp   22-Jan-07): #    Fix problem when model file supplied in arg is a full path name.
+1.3          (riouxp   22-Jan-07): #
+1.2          (riouxp   14-Dec-06): #    Revision 1.1  2006/11/16 18:23:58  riouxp
+1.2          (riouxp   14-Dec-06): #    Renamed "RNAweasel_cl" as appropriate. "RNAweasel" is
+1.2          (riouxp   14-Dec-06): #    a seperate interactive wrapper.
+1.1          (riouxp   16-Nov-06): #
+1.1          (riouxp   16-Nov-06): #    Revision 1.1  2006/11/15 19:00:04  riouxp
+1.1          (riouxp   16-Nov-06): #    Newly check-in version. This used to be "erpin-weasel".
+1.1          (riouxp   16-Nov-06): #
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #####################
+1.21         (nbeck    04-Aug-09): ##--MODULES CALLS--##
+1.1          (riouxp   16-Nov-06): #####################
+1.1          (riouxp   16-Nov-06): 
+1.5          (riouxp   23-Jan-07): use vars qw( $VERSION $RCS_VERSION );
+1.5          (riouxp   23-Jan-07): 
+1.5          (riouxp   23-Jan-07): # Program's name and version number.
+1.21         (nbeck    04-Aug-09): $RCS_VERSION='$Id: RNAweasel_cl,v 1.20 2008/08/04 20:54:27 riouxp Exp $';
+1.5          (riouxp   23-Jan-07): ($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+1.5          (riouxp   23-Jan-07): my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+1.5          (riouxp   23-Jan-07): 
+1.5          (riouxp   23-Jan-07): print "This is $BASENAME version $VERSION.\n";
+1.5          (riouxp   23-Jan-07): 
+1.1          (riouxp   16-Nov-06): ###############################
+1.1          (riouxp   16-Nov-06): ##--Check arguments numbers--##
+1.1          (riouxp   16-Nov-06): ###############################
+1.21         (nbeck    04-Aug-09): if (@ARGV == 0) {
+1.1          (riouxp   16-Nov-06): 	print "\nThere were no arguments passed on the command line. This program takes arguments\n";
+1.1          (riouxp   16-Nov-06): 	Usage();
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #############################
+1.1          (riouxp   16-Nov-06): ##--SET PATHS & CONSTANTS--##
+1.1          (riouxp   16-Nov-06): #############################
+1.1          (riouxp   16-Nov-06): $|=1;
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #global variables
+1.1          (riouxp   16-Nov-06): my $MODELFILE      = shift @ARGV;
+1.2          (riouxp   14-Dec-06): my $MODELBASE      = basename($MODELFILE);
+1.1          (riouxp   16-Nov-06): my $DATAFILE       = shift @ARGV;
+1.1          (riouxp   16-Nov-06): my @ERPINARGS;
+1.1          (riouxp   16-Nov-06): 
+1.6          (riouxp   29-Jan-07): #default path, can be changed in parameters file.
+1.6          (riouxp   29-Jan-07): my $ERPIN          = "/share/supported/bin/erpin";
+1.6          (riouxp   29-Jan-07): my $DISTPIN        = "/share/supported/bin/distpin";
+1.6          (riouxp   29-Jan-07): my $MF2FASTA       = "/share/supported/bin/mf2fasta";
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): my $TRUE           = 1;
+1.1          (riouxp   16-Nov-06): my $FALSE          = 0;
+1.21         (nbeck    04-Aug-09): my $DEBUG          = 0;
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #default parameters for the script
+1.21         (nbeck    04-Aug-09): my $REMOVEREPEATED = 1;
+1.21         (nbeck    04-Aug-09): my $EVALUEFILTER   = 0;
+1.1          (riouxp   16-Nov-06): my $LOWER          = 0;
+1.1          (riouxp   16-Nov-06): my $UPPER          = 100;
+1.21         (nbeck    04-Aug-09): my $USEDISTANCE    = 0;
+1.1          (riouxp   16-Nov-06): my $DISTANCECUTOFF = 0;
+1.21         (nbeck    04-Aug-09): my $REITERATE      = 0;
+1.21         (nbeck    04-Aug-09): my $REINJECT       = 0;
+1.21         (nbeck    04-Aug-09): my $EVALUESORT     = 0;
+1.21         (nbeck    04-Aug-09): my $POURCENTISDEF  = 0;
+1.21         (nbeck    04-Aug-09): my $POURCENT       = undef;
+1.15         (riouxp   09-Feb-08): my $TMP_DIR        = "/tmp/rnaweaselcl.$$";
+1.18         (riouxp   13-Mar-08): 
+1.21         (nbeck    04-Aug-09): my $NO_MF2FASTA      = 0;     # -F option
+1.21         (nbeck    04-Aug-09): my $RESULT_FILE_BASE = "";    # -o option
+1.21         (nbeck    04-Aug-09): my $LOG_LABEL        = undef; # -L option
+1.11         (riouxp   07-Feb-07): 
+1.11         (riouxp   07-Feb-07): # Model stripping options
+1.11         (riouxp   07-Feb-07): my $STRIP_MODEL          = 0; # on or off, based on -s on command line
+1.11         (riouxp   07-Feb-07): my $STRIP_MODEL_L_STRUCT = "";
+1.11         (riouxp   07-Feb-07): my $STRIP_MODEL_R_STRUCT = "";
+1.1          (riouxp   16-Nov-06): 
+1.6          (riouxp   29-Jan-07): #hash table which contains all sequences
+1.12         (riouxp   03-Apr-07): my $Rseqs; # Changed to ref to hash
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ###############################
+1.1          (riouxp   16-Nov-06): ## -- Read parameter File -- ## 
+1.1          (riouxp   16-Nov-06): ###############################
+1.1          (riouxp   16-Nov-06): my $paramfile = $ENV{HOME}."/.RNAweasel";
+1.21         (nbeck    04-Aug-09): ($ERPIN,$DISTPIN,$MF2FASTA ) = readParamFile() if (-e $paramfile);
+1.21         (nbeck    04-Aug-09): 
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ##################################
+1.1          (riouxp   16-Nov-06): ##-- Deal with the arguments -- ##
+1.1          (riouxp   16-Nov-06): ##################################
+1.21         (nbeck    04-Aug-09): while() {
+1.1          (riouxp   16-Nov-06): 	my $arg = shift @ARGV;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	if ($arg eq "-v") {
+1.1          (riouxp   16-Nov-06): 		$ERPIN = shift @ARGV;next;
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-r") {
+1.21         (nbeck    04-Aug-09): 		$REMOVEREPEATED = 0;next;
+1.21         (nbeck    04-Aug-09): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-e") {
+1.21         (nbeck    04-Aug-09): 		$EVALUESORT = 1;next;
+1.21         (nbeck    04-Aug-09): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-ec") {
+1.21         (nbeck    04-Aug-09): 		$EVALUESORT = 1;
+1.1          (riouxp   16-Nov-06): 		$arg = shift @ARGV;
+1.21         (nbeck    04-Aug-09): 		if ($arg >= 0 && $arg <100) {
+1.1          (riouxp   16-Nov-06): 			$LOWER = $arg;
+1.1          (riouxp   16-Nov-06): 			$arg = shift @ARGV;
+1.1          (riouxp   16-Nov-06): 			if ($arg <= 100 && $arg > $LOWER)
+1.1          (riouxp   16-Nov-06): 			{$UPPER = $arg;}
+1.6          (riouxp   29-Jan-07): 			else {print "\nWrong Evalue cutoff\n";Usage();}
+1.1          (riouxp   16-Nov-06): 		}
+1.6          (riouxp   29-Jan-07): 		else {print "\nWrong Evalue cutoff\n";Usage();}
+1.1          (riouxp   16-Nov-06): 		next;
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-p") {
+1.21         (nbeck    04-Aug-09): 		$USEDISTANCE = 1;
+1.1          (riouxp   16-Nov-06): 		$arg = shift @ARGV;
+1.21         (nbeck    04-Aug-09): 		if ($arg > 100 || $arg < 0) {
+1.6          (riouxp   29-Jan-07): 			print "\nWrong Phylogenetic cutoff\n";Usage();
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		$DISTANCECUTOFF = $arg;
+1.1          (riouxp   16-Nov-06): 		next;
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-i") {
+1.21         (nbeck    04-Aug-09): 		$REITERATE     = 1;
+1.21         (nbeck    04-Aug-09): 		$REINJECT      = 0;
+1.1          (riouxp   16-Nov-06): 		next; 
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-ia") {
+1.21         (nbeck    04-Aug-09): 		$REITERATE     = 1;
+1.21         (nbeck    04-Aug-09): 		$REINJECT      = 1;
+1.1          (riouxp   16-Nov-06): 		next; 
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-d") {
+1.1          (riouxp   16-Nov-06): 		$TMP_DIR = shift @ARGV;
+1.1          (riouxp   16-Nov-06): 		next; 
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-s") {
+1.21         (nbeck    04-Aug-09):     # strip leading and trailing unused elements of model file
+1.9          (riouxp   02-Feb-07): 		$STRIP_MODEL = 1;
+1.9          (riouxp   02-Feb-07): 		next; 
+1.9          (riouxp   02-Feb-07): 	}
+1.21         (nbeck    04-Aug-09): 	elsif ($arg eq "-F") { 
+1.21         (nbeck    04-Aug-09):     # do not run MF2FASTA on the sequence data
+1.21         (nbeck    04-Aug-09):         $NO_MF2FASTA = 1;
+1.21         (nbeck    04-Aug-09):         next;
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     elsif ($arg eq "-o") {
+1.21         (nbeck    04-Aug-09):     # override final result basename ( .fullalignment and .fullalignment.log )
+1.21         (nbeck    04-Aug-09):         $RESULT_FILE_BASE = @ARGV ? shift(@ARGV) : die "Argument missing for -o option.\n";
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     elsif ($arg eq "-L") {
+1.21         (nbeck    04-Aug-09):     # Outputs a user-selected string into the .log file
+1.21         (nbeck    04-Aug-09):         $LOG_LABEL = @ARGV ? shift(@ARGV) : die "Argument missing for -L option.\n";
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     elsif ($arg eq "-pc"){
+1.21         (nbeck    04-Aug-09):         $POURCENTISDEF = 1;
+1.21         (nbeck    04-Aug-09):         $POURCENT      = @ARGV ? shift(@ARGV) : die "Argument missing for -L option.\n";
+1.21         (nbeck    04-Aug-09):         die 'Value of option -pc must be include between 0 and 100' 
+1.21         (nbeck    04-Aug-09):             if !($POURCENT > 0 && $POURCENT <= 100);
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09): 	else {
+1.1          (riouxp   16-Nov-06): 		my @arg = @ARGV;
+1.1          (riouxp   16-Nov-06): 		@ERPINARGS = ($arg, @arg);
+1.1          (riouxp   16-Nov-06): 		last;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.9          (riouxp   02-Feb-07): # Parsing Erpin Arguments
+1.21         (nbeck    04-Aug-09): my ($erpinMaskNums, $USER_CUTOFF) = &ParseErpinArgs(@ERPINARGS);
+1.21         (nbeck    04-Aug-09): my @erpinMaskNums = @$erpinMaskNums; #NB according with old code
+1.9          (riouxp   02-Feb-07): my $lowest = $erpinMaskNums[0];
+1.21         (nbeck    04-Aug-09): unless (-d $TMP_DIR) { mkdir($TMP_DIR,0755); }
+1.21         (nbeck    04-Aug-09): my $FileForCut = &CreateFileForCutoff if $POURCENTISDEF;
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07): #############################################
+1.9          (riouxp   02-Feb-07): # Preprocessing step: Strip unused elements #
+1.9          (riouxp   02-Feb-07): #############################################
+1.9          (riouxp   02-Feb-07): if ($STRIP_MODEL) {
+1.9          (riouxp   02-Feb-07):     my $stripped = $MODELFILE;
+1.9          (riouxp   02-Feb-07):     unless ($stripped =~ s/.epn$/-S.epn/) {
+1.9          (riouxp   02-Feb-07):         $stripped .= "-S";
+1.9          (riouxp   02-Feb-07):     }
+1.11         (riouxp   07-Feb-07):     my $newregion = "";
+1.11         (riouxp   07-Feb-07):     ($newregion, $STRIP_MODEL_L_STRUCT, $STRIP_MODEL_R_STRUCT)
+1.11         (riouxp   07-Feb-07):         = MakeStrippedModel($MODELFILE,$stripped,\@erpinMaskNums,$ERPINARGS[0]);
+1.9          (riouxp   02-Feb-07):     # Override so that the rest of the program works the same.
+1.9          (riouxp   02-Feb-07):     $ERPINARGS[0] = $newregion;
+1.9          (riouxp   02-Feb-07):     $MODELFILE=$stripped;
+1.9          (riouxp   02-Feb-07):     $MODELBASE=basename($MODELFILE);
+1.9          (riouxp   02-Feb-07): }
+1.9          (riouxp   02-Feb-07): 
+1.1          (riouxp   16-Nov-06): ###############################################################
+1.1          (riouxp   16-Nov-06): ##--Check Sequences Files and Erpin,Distpin,MF2FASTA paths --##
+1.1          (riouxp   16-Nov-06): ############################################################### 
+1.15         (riouxp   09-Feb-08): 
+1.1          (riouxp   16-Nov-06): checkFile($MODELFILE);
+1.1          (riouxp   16-Nov-06): checkFile($DATAFILE);
+1.1          (riouxp   16-Nov-06): checkRelatedProgs($DISTPIN,"DISTPIN");
+1.1          (riouxp   16-Nov-06): checkRelatedProgs($MF2FASTA,"MF2FASTA");
+1.1          (riouxp   16-Nov-06): checkRelatedProgs($ERPIN,"ERPIN");
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ###################################
+1.1          (riouxp   16-Nov-06): ##--Creation of temporary files--##
+1.1          (riouxp   16-Nov-06): ###################################
+1.21         (nbeck    04-Aug-09): my $TMPOUTPUTFILE   = "$TMP_DIR/erpin-output.$$";				    #tmp erpin outputfile
+1.21         (nbeck    04-Aug-09): my $TMPDATAFILE     = "$TMP_DIR/" . basename($DATAFILE) . ".$$";	#tmp file with data sequences
+1.21         (nbeck    04-Aug-09): my $TS_SEQ_FILE     = "$TMP_DIR/Tmp_TS_Sequences.seq";			    #tmp TS sequences
+1.1          (riouxp   16-Nov-06): my $TMP_TS_SEQ_FILE = "$TMP_DIR/" . basename($TS_SEQ_FILE) . ".$$";	#tmp TS seq formated by mf2fasta
+1.21         (nbeck    04-Aug-09): my $LOG_FILE        = "$TMP_DIR/logfile.log.$$";					#log file
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): open (LOG,">$LOG_FILE") or die "Could not create log file $LOG_FILE";
+1.5          (riouxp   23-Jan-07): print LOG "****** $BASENAME $VERSION RUN *******\nParameters :\n";
+1.6          (riouxp   29-Jan-07): print LOG "Training set : $MODELFILE --- Data : $DATAFILE --- ARG_Erpin : @ERPINARGS\n";
+1.1          (riouxp   16-Nov-06): print LOG "ERPIN : $ERPIN\nDISTPIN : $DISTPIN\nMF2FASTA : $MF2FASTA\n\n";
+1.1          (riouxp   16-Nov-06): print LOG "Program Options :\nRemove Repeats : $REMOVEREPEATED\n";
+1.1          (riouxp   16-Nov-06): print LOG "Eval Sorting : $EVALUESORT Evalue Filter-> lower : $LOWER - upper : $UPPER\n";
+1.1          (riouxp   16-Nov-06): print LOG "Distance Filter : $USEDISTANCE - cutoff : $DISTANCECUTOFF\n";
+1.1          (riouxp   16-Nov-06): print LOG "Reiterate : $REITERATE - Reinject model (append) : $REINJECT\n";
+1.9          (riouxp   02-Feb-07): print LOG "Strip leading and trailing elements of model file: ",($STRIP_MODEL ? "TRUE\n" : "FALSE\n");
+1.9          (riouxp   02-Feb-07): print LOG "Logs dir : $TMP_DIR\n";
+1.1          (riouxp   16-Nov-06): ## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): # list of sequences
+1.21         (nbeck    04-Aug-09): my $Rdata;	    #only seqs file
+1.13         (riouxp   03-Apr-07): my $Rts_seq;	#only TS file
+1.21         (nbeck    04-Aug-09): my $Rmix;	    #mix of TS & seqs files
+1.1          (riouxp   16-Nov-06): my @modlist;	#list of temp models name - used only to remove temp file at the end
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #If you wanted to work with reinjection, you have to create a mixes sequences file : TS + Data
+1.21         (nbeck    04-Aug-09): if ($REINJECT) {
+1.1          (riouxp   16-Nov-06): 	#Temporary files creation
+1.1          (riouxp   16-Nov-06): 	open(MIX, ">$TMP_DIR/MixSeqs.seq") or die ("Could not create Mixseqs file!");
+1.6          (riouxp   29-Jan-07): 	open(TSSEQ, ">$TS_SEQ_FILE") or die ("Could not create training set sequence file!");
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Open Datafile _ read only - copy in mixed file
+1.1          (riouxp   16-Nov-06): 	open(DATA, $DATAFILE) or die ("Could not open output file!");
+1.1          (riouxp   16-Nov-06): 	my @temp = <DATA>;
+1.1          (riouxp   16-Nov-06): 	print MIX @temp;
+1.1          (riouxp   16-Nov-06): 	#Copy the Training set file in mixed file
+1.1          (riouxp   16-Nov-06): 	my @file = RemoveStructureLines($MODELFILE);  
+1.1          (riouxp   16-Nov-06): 	print MIX @file;
+1.1          (riouxp   16-Nov-06): 	print TSSEQ @file;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Close Temporary files
+1.1          (riouxp   16-Nov-06): 	close ( DATA  );
+1.1          (riouxp   16-Nov-06): 	close ( TSSEQ );
+1.1          (riouxp   16-Nov-06): 	close ( MIX   );
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ## 
+1.1          (riouxp   16-Nov-06): 	print LOG "\n\n\n****** Training SET VS Training SET ******\n\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "\nCreation of temporary files for Append option :\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "TS seqs file : $TS_SEQ_FILE - Mixed seqs file : $TMP_DIR/MixSeqs.seq\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "\nConversion of those files via MF2FASTA :\n";
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	#Conversion of sequences files via mf2fasta (take care if you dont do it, sometimes it Weasel will crash)
+1.1          (riouxp   16-Nov-06): 	system("$MF2FASTA $TMP_DIR/MixSeqs.seq > $TMP_DIR/MixSeqs.tmp");
+1.1          (riouxp   16-Nov-06): 	system("$MF2FASTA $TS_SEQ_FILE > $TMP_TS_SEQ_FILE");
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ##
+1.6          (riouxp   29-Jan-07): 	print LOG "Newly generated files : TS seqs file : $TMP_TS_SEQ_FILE - Mix seqs file : $TMP_DIR/MixSeqs.tmp\n";
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#read Files
+1.13         (riouxp   03-Apr-07): 	$Rts_seq = readSeqFile ( $TMP_TS_SEQ_FILE );
+1.13         (riouxp   03-Apr-07): 	$Rmix    = readSeqFile ( "$TMP_DIR/MixSeqs.tmp");
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #convert data file via mf2fasta
+1.12         (riouxp   03-Apr-07): if (!$NO_MF2FASTA) {
+1.12         (riouxp   03-Apr-07):     system("$MF2FASTA $DATAFILE > $TMPDATAFILE");
+1.12         (riouxp   03-Apr-07): } else {
+1.12         (riouxp   03-Apr-07):     system("/bin/cp $DATAFILE $TMPDATAFILE");
+1.12         (riouxp   03-Apr-07): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): print LOG "\nConversion of seqs file via MF2FASTA : Old Seqs File : $DATAFILE ==> New Seqs File : $TMPDATAFILE\n";
+1.1          (riouxp   16-Nov-06): ## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Read data file
+1.13         (riouxp   03-Apr-07): $Rdata = readSeqFile ( $TMPDATAFILE );
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ##########################
+1.1          (riouxp   16-Nov-06): # Start Reiteration part #
+1.1          (riouxp   16-Nov-06): ##########################
+1.21         (nbeck    04-Aug-09): my ($prevResult,$counter,$numModels) = (0,0,0);
+1.1          (riouxp   16-Nov-06): my $outputModel;
+1.2          (riouxp   14-Dec-06): my $inputModel = copyFile($MODELFILE,"$TMP_DIR/$MODELBASE");
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #count number of model in the training set
+1.1          (riouxp   16-Nov-06): my $originalModelNum = CounteModelsInFile($inputModel);
+1.1          (riouxp   16-Nov-06): my $newModelNum      = $originalModelNum;
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): my @erpin_ts_output; #this variable allow to save the erpin results in order to reinject them later
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Research Evalues for the training set
+1.21         (nbeck    04-Aug-09): if ($REINJECT) {
+1.1          (riouxp   16-Nov-06): 	#For the first cycle versus TS, you need that eval cutoff is disabled
+1.21         (nbeck    04-Aug-09): 	my ($tmpupper,$tmplower) = (100,0);
+1.21         (nbeck    04-Aug-09):     
+1.1          (riouxp   16-Nov-06): 	#Initialisation of seqs hash with training set sequences
+1.13         (riouxp   03-Apr-07): 	$Rseqs = GetSeqFromDataFile($Rts_seq);
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09):     # Run the 2 filters - remove repeated sequences and phylogenetic distance filter
+1.21         (nbeck    04-Aug-09):     # Remove repeated sequences 
+1.21         (nbeck    04-Aug-09):     ($inputModel,$newModelNum) = &RemoveRepeatedSeq($counter,$inputModel,$newModelNum)
+1.21         (nbeck    04-Aug-09):         if $REMOVEREPEATED;
+1.21         (nbeck    04-Aug-09):     # Remove by phylogenetic distance
+1.21         (nbeck    04-Aug-09):     ($inputModel,$newModelNum) = &RemoveByPhyloDist($counter,$inputModel,$newModelNum)
+1.21         (nbeck    04-Aug-09):         if $USEDISTANCE;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my $cutoff = &DefineCutoffWithPourcent($inputModel,$FileForCut,\@ERPINARGS,$USER_CUTOFF) if $POURCENTISDEF;
+1.21         (nbeck    04-Aug-09):        $cutoff = $USER_CUTOFF                                                                if !$POURCENTISDEF;
+1.21         (nbeck    04-Aug-09):     
+1.1          (riouxp   16-Nov-06): 	# # # RUN ERPIN # # #
+1.21         (nbeck    04-Aug-09): 	my $COMMAND = "$ERPIN $inputModel $TMP_TS_SEQ_FILE @ERPINARGS -cutoff $cutoff";
+1.1          (riouxp   16-Nov-06): 	system("$COMMAND | tee $TMPOUTPUTFILE");
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): 	print LOG "Running erpin... : model : $inputModel seqsFile : $TMP_TS_SEQ_FILE erpinArgs : @ERPINARGS\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "Save Results (Erpin Output) in $TMPOUTPUTFILE\n";
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Save Erpin results
+1.1          (riouxp   16-Nov-06): 	open (TS, "$TMPOUTPUTFILE")or die ("Could not open Erpin ouput");
+1.1          (riouxp   16-Nov-06): 	@erpin_ts_output = <TS>;
+1.1          (riouxp   16-Nov-06): 	close(TS);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Create the training set model (and now there is Evalues in the training set)
+1.1          (riouxp   16-Nov-06): 	($outputModel,$originalModelNum) = MakeModel($inputModel,$TMPOUTPUTFILE,$tmplower,$tmpupper,$FALSE); #evalue CO = 0-100%
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): 	print LOG "\nMakeModel => Creation of a new Model File - parameters :\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "settings : l_eval_co : $tmplower - u_eval_co : $tmpupper - FullAlignment Flag : $FALSE\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "Number of sequences in the new Model : $originalModelNum\n";  
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Save the path of temp file if you wanted to erase them later
+1.1          (riouxp   16-Nov-06): 	push (@modlist,"$outputModel");
+1.1          (riouxp   16-Nov-06): 	push (@modlist,"$outputModel.log");
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#put this new model in input
+1.1          (riouxp   16-Nov-06): 	$inputModel=$outputModel;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#initialisation of seqs hash with mixed sequences 
+1.21         (nbeck    04-Aug-09): 	$Rseqs = GetSeqFromDataFile ($Rmix);
+1.1          (riouxp   16-Nov-06): }
+1.21         (nbeck    04-Aug-09): else { 
+1.21         (nbeck    04-Aug-09):     $Rseqs = GetSeqFromDataFile($Rdata); 
+1.21         (nbeck    04-Aug-09): } #else initialize seqs hash only with data sequences
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): # variables with save the best model
+1.21         (nbeck    04-Aug-09): my ($best_FA_nb,$best_nb) = (0,0);
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): print LOG "\nEND OF FIRST PART\n\n\nSTARTING THE NORMAL CYCLE PART\n\n";
+1.1          (riouxp   16-Nov-06): ## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): do {
+1.1          (riouxp   16-Nov-06): 	# Open the previous Model file if this is not the first iteration
+1.21         (nbeck    04-Aug-09): 	$inputModel = $outputModel if ($counter > 0);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	print LOG "\n\n****** Iteration number : $counter ******\n";
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	# Run the 2 filters - remove repeated sequences and phylogenetic distance filter
+1.21         (nbeck    04-Aug-09):     # Remove repeated sequences 
+1.21         (nbeck    04-Aug-09):     ($inputModel,$newModelNum) = &RemoveRepeatedSeq($counter,$inputModel,$newModelNum)
+1.21         (nbeck    04-Aug-09):         if $REMOVEREPEATED;
+1.21         (nbeck    04-Aug-09):     # Remove by phylogenetic distance
+1.21         (nbeck    04-Aug-09):     ($inputModel,$newModelNum) = &RemoveByPhyloDist($counter,$inputModel,$newModelNum)
+1.21         (nbeck    04-Aug-09):         if($USEDISTANCE);
+1.21         (nbeck    04-Aug-09): 	
+1.21         (nbeck    04-Aug-09):     my $cutoff = &DefineCutoffWithPourcent($inputModel,$FileForCut,\@ERPINARGS,$USER_CUTOFF) if $POURCENTISDEF;
+1.21         (nbeck    04-Aug-09):        $cutoff = $USER_CUTOFF                                                                if !$POURCENTISDEF;
+1.21         (nbeck    04-Aug-09):        
+1.1          (riouxp   16-Nov-06): 	###############
+1.1          (riouxp   16-Nov-06): 	## Run erpin ##
+1.1          (riouxp   16-Nov-06): 	###############
+1.21         (nbeck    04-Aug-09): 	my $COMMAND = "$ERPIN $inputModel $TMPDATAFILE @ERPINARGS -cutoff $cutoff";
+1.1          (riouxp   16-Nov-06): 	system("$COMMAND | tee $TMPOUTPUTFILE");
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ##
+1.1          (riouxp   16-Nov-06): 	print LOG "\nRunning erpin... : model : $inputModel seqsFile : $TMPDATAFILE erpinArgs : @ERPINARGS\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "Save Results (Erpin Output) in $TMPOUTPUTFILE\n";
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#if reinjection, we just add erpin training set vs training set results to the new erpin output
+1.21         (nbeck    04-Aug-09): 	if ($REINJECT) {
+1.1          (riouxp   16-Nov-06): 		open (ATS, ">>$TMPOUTPUTFILE") or die ("Could not open temporary erpin file !");
+1.1          (riouxp   16-Nov-06): 		print ATS @erpin_ts_output; 
+1.1          (riouxp   16-Nov-06): 		close(ATS);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		print LOG "\nAppend ON : adding erpin TS results to $TMPOUTPUTFILE\n";
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#create the corresponding full alignment
+1.1          (riouxp   16-Nov-06): 	my ($outputModel_FA,$current_nbmodel) = MakeModel($inputModel,$TMPOUTPUTFILE,0,100,$TRUE);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	## ++ LOG ++ ##
+1.6          (riouxp   29-Jan-07): 	print LOG "\nMakeModel => Creation of a new training set - parameters :\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel_FA\n";
+1.1          (riouxp   16-Nov-06): 	print LOG "settings : l_eval_co : $LOWER - u_eval_co : $UPPER - FullAlignment Flag : $TRUE\n";
+1.6          (riouxp   29-Jan-07): 	print LOG "Number of sequences in the new training set : $current_nbmodel\n";  
+1.1          (riouxp   16-Nov-06): 	## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#save temp file names for future removing
+1.1          (riouxp   16-Nov-06): 	push (@modlist,"$outputModel_FA");
+1.1          (riouxp   16-Nov-06): 	push (@modlist,"$outputModel_FA.log");
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	if ($current_nbmodel >= $best_FA_nb) { 
+1.21         (nbeck    04-Aug-09):         $best_FA_nb = $current_nbmodel; 
+1.21         (nbeck    04-Aug-09):         print LOG "This full alignment is better than the old one\n";
+1.21         (nbeck    04-Aug-09):     }
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	# If there is an Evalue filter, create the Evalue filtered model
+1.21         (nbeck    04-Aug-09): 	if ( !($LOWER == 0 && $UPPER == 100) ) {
+1.21         (nbeck    04-Aug-09): 		# creation of the eval filtered model
+1.1          (riouxp   16-Nov-06): 		($outputModel,my $current_eval_nbmodel) = MakeModel($inputModel,$TMPOUTPUTFILE,$LOWER,$UPPER,$FALSE);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		## ++ LOG ++ ##
+1.6          (riouxp   29-Jan-07): 		print LOG "\nMakeModel => Creation of a new training set - parameters :\n";
+1.1          (riouxp   16-Nov-06): 		print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel\n";
+1.1          (riouxp   16-Nov-06): 		print LOG "settings : l_eval_co : $LOWER - u_eval_co : $UPPER - FullAlignment Flag : $FALSE\n";
+1.6          (riouxp   29-Jan-07): 		print LOG "Number of sequences in the new training set : $current_eval_nbmodel\n";
+1.1          (riouxp   16-Nov-06): 		## -- LOG -- ##
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		#save temp file names for future removing
+1.1          (riouxp   16-Nov-06): 		push (@modlist,"$outputModel");
+1.1          (riouxp   16-Nov-06): 		push (@modlist,"$outputModel.log");
+1.1          (riouxp   16-Nov-06): 		
+1.21         (nbeck    04-Aug-09): 		if ($current_nbmodel >= $best_FA_nb) { 
+1.21         (nbeck    04-Aug-09):             $best_nb = $current_eval_nbmodel;
+1.21         (nbeck    04-Aug-09):             print LOG "This training set is better than the old one\n";
+1.21         (nbeck    04-Aug-09):         }
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		#if the tmp dir is different than default, print more logs on the screen 
+1.21         (nbeck    04-Aug-09): 		if ($TMP_DIR ne "/tmp") {
+1.21         (nbeck    04-Aug-09): 			print BLUE, "The training set can be found in ", RESET;
+1.21         (nbeck    04-Aug-09): 			print BOLD, "\"$outputModel\"\n", RESET;
+1.21         (nbeck    04-Aug-09): 			print BLUE, "The log for the training set can be found in ", RESET;
+1.21         (nbeck    04-Aug-09): 			print BOLD, "\"$outputModel.log\"\n", RESET;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	else {
+1.1          (riouxp   16-Nov-06): 		$outputModel = $outputModel_FA;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#if the tmp dir is different than default, print more logs on the screen
+1.21         (nbeck    04-Aug-09): 	if ($TMP_DIR ne "/tmp") {
+1.21         (nbeck    04-Aug-09): 		print BLUE, "The Full Alignment can be found in ",RESET;
+1.21         (nbeck    04-Aug-09): 		print BOLD, "\"$outputModel_FA\"\n",RESET;
+1.21         (nbeck    04-Aug-09): 		print BLUE, "The log for the Full alignment file can be found in ",RESET;
+1.21         (nbeck    04-Aug-09): 		print BOLD, "\"$outputModel_FA.log\"\n\n",RESET;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Here we deal with the break condition of the main loop
+1.21         (nbeck    04-Aug-09): 	if($prevResult >= $current_nbmodel) { 
+1.21         (nbeck    04-Aug-09): 		$REITERATE = 0; 
+1.1          (riouxp   16-Nov-06): 		print LOG "nb seqs previous model : $prevResult\nnb seqs new model : $current_nbmodel\n ==> END OF REITERATION\n";
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	$prevResult = $current_nbmodel;
+1.1          (riouxp   16-Nov-06): 	# Increment number of cycles already done in the main Loop
+1.1          (riouxp   16-Nov-06): 	$counter++;
+1.21         (nbeck    04-Aug-09): } while ($REITERATE);
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub RemoveRepeatedSeq {
+1.21         (nbeck    04-Aug-09):     my ($counter,$inputModel,$newModelNum) = @_;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my $TMPMODELFILE = "$TMP_DIR/rm_repeat_model.$$.$counter";
+1.21         (nbeck    04-Aug-09):     my $command  = "$DISTPIN -i $inputModel -o $TMPMODELFILE -r @erpinMaskNums";
+1.21         (nbeck    04-Aug-09):     $inputModel  = Remove_Repeated_Sequences ($command,$TMPMODELFILE);
+1.21         (nbeck    04-Aug-09):     $newModelNum = CounteModelsInFile($inputModel);
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     print LOG "\nRemoving Repeated sequences\n";
+1.21         (nbeck    04-Aug-09):     print LOG "inputmodel : $inputModel - outputmodel : $TMPMODELFILE\n";
+1.21         (nbeck    04-Aug-09):     print LOG "New number of seqs : $newModelNum\n";
+1.21         (nbeck    04-Aug-09):     # inputmodel is now : rm_repeat
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09):     return ($inputModel,$newModelNum);
+1.21         (nbeck    04-Aug-09): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub RemoveByPhyloDist {
+1.21         (nbeck    04-Aug-09):     my ($counter,$inputModel,$newModelNum) = @_;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my $TMPMODELFILE = "$TMP_DIR/dist_filt_model.$$.$counter";
+1.21         (nbeck    04-Aug-09):     my $command      = "$DISTPIN -l $DISTANCECUTOFF -i $inputModel -o $TMPMODELFILE -t translation.txt @erpinMaskNums";
+1.21         (nbeck    04-Aug-09):     $inputModel      = Remove_Seq_By_Phylo_Distance($command,$TMPMODELFILE);
+1.21         (nbeck    04-Aug-09):     $newModelNum     = CounteModelsInFile($inputModel);
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     print LOG "\nPhylogenetic distance filter\n";
+1.21         (nbeck    04-Aug-09):     print LOG "inputmodel : $inputModel - cut off : $DISTANCECUTOFF outputmodel : $TMPMODELFILE\n";
+1.21         (nbeck    04-Aug-09):     print LOG "New number of seqs : $newModelNum\n";
+1.21         (nbeck    04-Aug-09):     # inputmodel is now : dist_filt
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     return ($inputModel,$newModelNum);
+1.21         (nbeck    04-Aug-09): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): # Copy the best models in the user directory and print paths on the screen
+1.21         (nbeck    04-Aug-09): if ( !($LOWER == 0 && $UPPER == 100) ) {
+1.2          (riouxp   14-Dec-06): 	my $best_model = copyFile ("$TMP_DIR/$MODELBASE-$best_nb","$MODELFILE-$best_nb");
+1.21         (nbeck    04-Aug-09): 	print BLUE,"The Best training set for this session can be found in ", RESET;
+1.21         (nbeck    04-Aug-09): 	print BOLD,"\"$best_model\"\n", RESET;
+1.1          (riouxp   16-Nov-06): 	
+1.6          (riouxp   29-Jan-07): 	print LOG "\nBest training set : $best_model - log file : $best_model.log\n";
+1.1          (riouxp   16-Nov-06): 	
+1.2          (riouxp   14-Dec-06): 	$best_model = copyFile ("$TMP_DIR/$MODELBASE-$best_nb.log","$MODELFILE-$best_nb.log");
+1.21         (nbeck    04-Aug-09): 	print BLUE,"The Log File can be found in ", RESET;
+1.21         (nbeck    04-Aug-09): 	print BOLD,"\"$best_model\"\n", RESET;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.16         (riouxp   22-Feb-08): my $RESULT_FILE_FA     = $RESULT_FILE_BASE
+1.16         (riouxp   22-Feb-08):                        ? "$RESULT_FILE_BASE"
+1.16         (riouxp   22-Feb-08):                        : "$MODELFILE-$best_FA_nb.fullalignment";
+1.16         (riouxp   22-Feb-08): my $RESULT_FILE_FA_LOG = "$RESULT_FILE_FA.log";
+1.16         (riouxp   22-Feb-08): 
+1.16         (riouxp   22-Feb-08): copyFile("$TMP_DIR/$MODELBASE-$best_FA_nb.fullalignment",$RESULT_FILE_FA);
+1.21         (nbeck    04-Aug-09): print BLUE,"Results in Erpin training set format : ", RESET;
+1.21         (nbeck    04-Aug-09): print BOLD,"\"$RESULT_FILE_FA\"\n", RESET;
+1.1          (riouxp   16-Nov-06): 
+1.16         (riouxp   22-Feb-08): print LOG "\nTraining set format: $RESULT_FILE_FA - log file : $RESULT_FILE_FA_LOG\n"; 
+1.16         (riouxp   22-Feb-08): close(LOG);
+1.1          (riouxp   16-Nov-06): 
+1.16         (riouxp   22-Feb-08): copyFile("$TMP_DIR/$MODELBASE-$best_FA_nb.fullalignment.log","$RESULT_FILE_FA_LOG");
+1.21         (nbeck    04-Aug-09): print BLUE,"Results in condensed alignment format: ", RESET;
+1.21         (nbeck    04-Aug-09): print BOLD,"\"$RESULT_FILE_FA_LOG\"\n\n", RESET;
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): # End of the script
+1.1          (riouxp   16-Nov-06): exit(0);
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): # If the user has not specified a log directory, remove all temporary files
+1.21         (nbeck    04-Aug-09): END {
+1.21         (nbeck    04-Aug-09): 	if (defined($TMP_DIR) && $TMP_DIR eq "/tmp/rnaweaselcl.$$") {
+1.21         (nbeck    04-Aug-09):         system("/bin/rm","-rf",$TMP_DIR);
+1.21         (nbeck    04-Aug-09):         # other unlinks probably no longer valid
+1.1          (riouxp   16-Nov-06): 		unlink($TMPOUTPUTFILE,$TMPDATAFILE,"$TMP_DIR/MixSeqs.seq","$TMP_DIR/MixSeqs.tmp");
+1.1          (riouxp   16-Nov-06): 		unlink($TS_SEQ_FILE,$TMP_TS_SEQ_FILE,$LOG_FILE);
+1.2          (riouxp   14-Dec-06): 		unlink("$TMP_DIR/$MODELBASE");
+1.21         (nbeck    04-Aug-09): 		for (my $i=0;$i<=$counter;$i++) {
+1.15         (riouxp   09-Feb-08): 			unlink("$TMP_DIR/rm_repeat_model.$$.$i","$TMP_DIR/dist_filt_model.$$.$i");
+1.1          (riouxp   16-Nov-06): 		}
+1.21         (nbeck    04-Aug-09): 		foreach my $mod (@modlist) {
+1.1          (riouxp   16-Nov-06): 			unlink($mod);
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}	
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.6          (riouxp   29-Jan-07): # Function which create a new training set with or without evalue filter
+1.21         (nbeck    04-Aug-09): sub MakeModel {
+1.1          (riouxp   16-Nov-06): 	############################
+1.1          (riouxp   16-Nov-06): 	## Variables & arguments  ##
+1.1          (riouxp   16-Nov-06): 	############################
+1.21         (nbeck    04-Aug-09): 	my ($modelFile,$outputfile,$ECO_LOW,$ECO_UP,$FA_FLAG)  = @_;
+1.1          (riouxp   16-Nov-06): 	my ($outSeqsRef, $outSeqEvalueOrderRef, $outSeqOriginalOrderRef, $dirRef, $startRef, $endRef, $eValueRef, $upper, $lower, $origNumResults);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	############################
+1.1          (riouxp   16-Nov-06): 	## Read Erpin output file ##
+1.1          (riouxp   16-Nov-06): 	############################
+1.14         (riouxp   03-Apr-07): 	open(OUTPUT, $outputfile) or die ("Could not open output file '$outputfile': $!\n");
+1.1          (riouxp   16-Nov-06): 	my @erpinOutputFile = <OUTPUT>;
+1.1          (riouxp   16-Nov-06): 	close(OUTPUT);
+1.21         (nbeck    04-Aug-09): 	# If there is no results in this file => quit with error message
+1.21         (nbeck    04-Aug-09): 	noErpinResultError() if (@erpinOutputFile == 0);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	###########################################################################################
+1.1          (riouxp   16-Nov-06): 	## Lecture des sequences dans le fichier output erpin avec prise en compte bornes evalue ##
+1.1          (riouxp   16-Nov-06): 	###########################################################################################
+1.13         (riouxp   03-Apr-07): 	($outSeqsRef, $outSeqEvalueOrderRef, $outSeqOriginalOrderRef, $dirRef, $startRef, $endRef, $eValueRef, $upper, $lower, $origNumResults) = GetSeqFromOutputFile($ECO_LOW, $ECO_UP, \@erpinOutputFile);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my %outSeqs              = %$outSeqsRef;
+1.1          (riouxp   16-Nov-06): 	my @outSeqsEvalueOrder   = @$outSeqEvalueOrderRef;
+1.1          (riouxp   16-Nov-06): 	my @outSeqsOriginalOrder = @$outSeqOriginalOrderRef;
+1.1          (riouxp   16-Nov-06): 	my %dir                  = %$dirRef;
+1.1          (riouxp   16-Nov-06): 	my %start                = %$startRef;
+1.1          (riouxp   16-Nov-06): 	my %end                  = %$endRef;
+1.1          (riouxp   16-Nov-06): 	my %eValue               = %$eValueRef;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#####################
+1.1          (riouxp   16-Nov-06): 	## Read Model File ##
+1.1          (riouxp   16-Nov-06): 	#####################
+1.1          (riouxp   16-Nov-06): 	open(MODEL, $modelFile) or die ("Could not open output file!");
+1.1          (riouxp   16-Nov-06): 	my @modelFile = <MODEL>;
+1.1          (riouxp   16-Nov-06): 	close(MODEL);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Get the structures lines from the model file
+1.13         (riouxp   03-Apr-07): 	my $structure = GetStructureFromModelFile(\@modelFile);
+1.11         (riouxp   07-Feb-07): 
+1.11         (riouxp   07-Feb-07):         if ($STRIP_MODEL) { # Adjust structure
+1.11         (riouxp   07-Feb-07):             my ($s1,$s2)   = split(/\n/,$structure);
+1.11         (riouxp   07-Feb-07):             my ($s1l,$s2l) = split(/\n/,$STRIP_MODEL_L_STRUCT);
+1.11         (riouxp   07-Feb-07):             my ($s1r,$s2r) = split(/\n/,$STRIP_MODEL_R_STRUCT);
+1.21         (nbeck    04-Aug-09):             $structure = "$s1l$s1$s1r\n" . "$s2l$s2$s2r\n";
+1.11         (riouxp   07-Feb-07):         }
+1.11         (riouxp   07-Feb-07): 	
+1.1          (riouxp   16-Nov-06): 	#Count number of sequences in the model
+1.1          (riouxp   16-Nov-06): 	my $numModels = @outSeqsEvalueOrder;
+1.1          (riouxp   16-Nov-06): 	#Create the new model name
+1.21         (nbeck    04-Aug-09):     $outputModel = $FA_FLAG ? "$MODELBASE-$numModels.fullalignment" : "$MODELBASE-$numModels";
+1.1          (riouxp   16-Nov-06): 	
+1.6          (riouxp   29-Jan-07): 	#############################
+1.6          (riouxp   29-Jan-07): 	# 6. Build new training set #
+1.6          (riouxp   29-Jan-07): 	#############################
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#creation of new model & log files
+1.1          (riouxp   16-Nov-06): 	my $modelLogFile    = "$TMP_DIR/$outputModel.log";
+1.21         (nbeck    04-Aug-09): 	open(OUTMODELLOG, ">$modelLogFile")      or die "Could not open training set logfile\n";
+1.6          (riouxp   29-Jan-07): 	open(OUTMODEL, ">$TMP_DIR/$outputModel") or die "Could not open new training set file\n";
+1.1          (riouxp   16-Nov-06): 	
+1.6          (riouxp   29-Jan-07): 	#Print structure in the training set
+1.1          (riouxp   16-Nov-06): 	print OUTMODEL ">structure\n";
+1.1          (riouxp   16-Nov-06): 	print OUTMODEL $structure;
+1.11         (riouxp   07-Feb-07): 
+1.1          (riouxp   16-Nov-06): 	## BEGIN : HEADER LOG FILE
+1.6          (riouxp   29-Jan-07): 	print OUTMODELLOG "*************************************************\n";
+1.6          (riouxp   29-Jan-07): 	print OUTMODELLOG "Condensed alignment for $outputModel\n";
+1.6          (riouxp   29-Jan-07): 	print OUTMODELLOG "*************************************************\n";
+1.6          (riouxp   29-Jan-07): 	print OUTMODELLOG "There are $numModels matches\n";
+1.21         (nbeck    04-Aug-09):     print OUTMODELLOG "Processing label: $LOG_LABEL\n" if defined $LOG_LABEL;
+1.1          (riouxp   16-Nov-06): 	
+1.6          (riouxp   29-Jan-07): 	if($FA_FLAG) { print OUTMODELLOG "\n"; }
+1.21         (nbeck    04-Aug-09): 	else {
+1.6          (riouxp   29-Jan-07): 		print OUTMODELLOG "There were originally $origNumResults sequences in this training set\n";
+1.6          (riouxp   29-Jan-07): 		print OUTMODELLOG "The lower cut off was set to $ECO_LOW%, and " . ($origNumResults - $lower) . " sequences were removed\n";
+1.6          (riouxp   29-Jan-07): 		print OUTMODELLOG "The upper cut off was set to $ECO_UP%, and " . $upper . " sequences were removed\n";
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09): 	print OUTMODELLOG "The phylogenic distance cutoff was set to $DISTANCECUTOFF, and " . ($originalModelNum-$newModelNum) . " sequences were removed\n"
+1.21         (nbeck    04-Aug-09):         if($USEDISTANCE);
+1.1          (riouxp   16-Nov-06): 	## END : HEADER LOG FILE 
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my $prefixLen       = GetStructurePos($structure, $lowest);
+1.1          (riouxp   16-Nov-06): 	my $prefixIndex     = $prefixLen;
+1.1          (riouxp   16-Nov-06): 	my $suffixLen       = 0;
+1.1          (riouxp   16-Nov-06): 	my $suffixIndex     = 0;
+1.1          (riouxp   16-Nov-06): 	my $structureLen    = GetStructureLength($structure);
+1.11         (riouxp   07-Feb-07): 
+1.1          (riouxp   16-Nov-06): 	# Need to loop through all sequences first for report
+1.1          (riouxp   16-Nov-06): 	# to see the max length of each sequence
+1.1          (riouxp   16-Nov-06): 	# This is mainly because the sequences/models in the report
+1.1          (riouxp   16-Nov-06): 	# need to be aligned, and if we don't know their lengths
+1.1          (riouxp   16-Nov-06): 	# and gaps, then the alignments will be bad.
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my @maxBitLen;
+1.1          (riouxp   16-Nov-06): 	my @preLoop = @outSeqsOriginalOrder;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	foreach my $key (@preLoop) {
+1.1          (riouxp   16-Nov-06): 		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+1.1          (riouxp   16-Nov-06): 		my @reportHeader = split(" ", $hashKey);
+1.1          (riouxp   16-Nov-06): 		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+1.1          (riouxp   16-Nov-06): 		my @seqBits = split(/\./, $tmpSeq);
+1.1          (riouxp   16-Nov-06): 		
+1.21         (nbeck    04-Aug-09): 		for(my $i=0;$i<@seqBits;$i++) {
+1.1          (riouxp   16-Nov-06): 			if($seqBits[$i] =~ m/^[\-]+$/) { $seqBits[$i] = "";}
+1.1          (riouxp   16-Nov-06): 			#If this is lowercase
+1.1          (riouxp   16-Nov-06): 			if(!defined($maxBitLen[$i])) { $maxBitLen[$i] = length($seqBits[$i]); }
+1.1          (riouxp   16-Nov-06): 			elsif(length($seqBits[$i]) > $maxBitLen[$i]) { $maxBitLen[$i] = length($seqBits[$i]); }
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.14         (riouxp   03-Apr-07): 	print OUTMODELLOG "Species name                       E-value   # of nt     Start..Stop     Str  #  Structure\n";
+1.14         (riouxp   03-Apr-07): 	print OUTMODELLOG "------------------------------  ---------- --------- -------------------- -- --- ------------------\n"; 
+1.21         (nbeck    04-Aug-09):     #Fields:           ssssssssssssssssssssssssssssss| EEEEEEEEEE NNNNNNNNN PPPPPPPPP..PPPPPPPPP SS MMM [[[...
+1.21         (nbeck    04-Aug-09):     #Fields:           0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+1.21         (nbeck    04-Aug-09):     #print OUTMODELLOG "---------------------------------------------------------------------------------------------------\n"; 
+1.21         (nbeck    04-Aug-09):     #printing brackets system in log file  
+1.21         (nbeck    04-Aug-09):     #print OUTMODELLOG " " x 76 . MakeLogBracketsOld($structure, @maxBitLen) . "\n";
+1.21         (nbeck    04-Aug-09):     print OUTMODELLOG "                                                                                 ";
+1.21         (nbeck    04-Aug-09):     print OUTMODELLOG MakeLogBracketsNew($structure, \@maxBitLen, \@erpinMaskNums) . "\n";
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my @sortedList;
+1.1          (riouxp   16-Nov-06): 	if($EVALUESORT == $TRUE) { @sortedList = @outSeqsEvalueOrder; }
+1.1          (riouxp   16-Nov-06): 	else { @sortedList = @outSeqsOriginalOrder;}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Copy sequences in the LOG file
+1.21         (nbeck    04-Aug-09): 	foreach my $key (@sortedList) {
+1.1          (riouxp   16-Nov-06): 		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+1.1          (riouxp   16-Nov-06): 		my @reportHeader = split(" ", $hashKey);
+1.1          (riouxp   16-Nov-06): 		
+1.21         (nbeck    04-Aug-09):         $reportHeader[0] = substr($reportHeader[0], 0, 30) if(length($reportHeader[0]) > 30);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+1.1          (riouxp   16-Nov-06): 		# Report
+1.1          (riouxp   16-Nov-06): 		# Allo.macrogynus.mt      6.55e-24   55667   6877..7327  FW   1  TATACAATCG CTA C C GACTG gtt...(1151)...ctt AATGTA CAGTC G GTATTTCCAA
+1.1          (riouxp   16-Nov-06): 		
+1.14         (riouxp   03-Apr-07): 		printf OUTMODELLOG ("%-30s| %10s %9s %9s..%-9s %s %3s ",
+1.1          (riouxp   16-Nov-06): 				$reportHeader[0],
+1.1          (riouxp   16-Nov-06): 				@{$eValue{$hashKey}}[$arrayKey],
+1.12         (riouxp   03-Apr-07): 				length($Rseqs->{$hashKey}),
+1.1          (riouxp   16-Nov-06): 				@{$start{$hashKey}}[$arrayKey],
+1.1          (riouxp   16-Nov-06): 				@{$end{$hashKey}}[$arrayKey],
+1.1          (riouxp   16-Nov-06): 				@{$dir{$hashKey}}[$arrayKey],
+1.1          (riouxp   16-Nov-06): 				($arrayKey+1));
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		print OUTMODELLOG makeReportSeq($tmpSeq, @maxBitLen) . "\n";
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): #######  REMARK :
+1.1          (riouxp   16-Nov-06): #######  In this part, there is a lots of "length($var)".
+1.1          (riouxp   16-Nov-06): #######  I think they can be replaced by temporary variables but sometimes i was thinking that i causes somes crashes.
+1.1          (riouxp   16-Nov-06): #######  
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Copy sequences in the model file
+1.21         (nbeck    04-Aug-09): 	foreach my $key (@sortedList) {
+1.1          (riouxp   16-Nov-06): 		# Remember that the $key here contains three values;
+1.1          (riouxp   16-Nov-06): 		# but we only care aobut the $arrayKey and the $hashKey.
+1.1          (riouxp   16-Nov-06): 		# The $dirKey here is only in there to make all keys in 
+1.1          (riouxp   16-Nov-06): 		# the hash unique 
+1.1          (riouxp   16-Nov-06): 		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+1.1          (riouxp   16-Nov-06): 		$key = $hashKey;
+1.1          (riouxp   16-Nov-06): 		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+1.1          (riouxp   16-Nov-06): 		my @reportHeader = split(" ", $key);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		# Make all uppercase
+1.1          (riouxp   16-Nov-06): 		$tmpSeq = uc($tmpSeq);
+1.1          (riouxp   16-Nov-06): 		$tmpSeq =~ s/\.//g;
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		# CREATE HEADER IN THE MODEL FILE    
+1.1          (riouxp   16-Nov-06): 		# Make header 
+1.1          (riouxp   16-Nov-06): 		my $header;
+1.1          (riouxp   16-Nov-06): 		my $keyLen = length($key);
+1.1          (riouxp   16-Nov-06): 		# Trucate sequence name if greater than 60 characters long
+1.1          (riouxp   16-Nov-06): 		if($keyLen > 60) { $header = ">" . substr($key, 0, 59);}
+1.21         (nbeck    04-Aug-09): 		else {
+1.1          (riouxp   16-Nov-06): 			$header  = ">" . $key; 
+1.1          (riouxp   16-Nov-06): 			$header .= " " x (59-$keyLen);
+1.1          (riouxp   16-Nov-06): 		}
+1.20         (riouxp   04-Aug-08): 
+1.20         (riouxp   04-Aug-08): 		$suffixLen     = $structureLen - $prefixLen - length($tmpSeq);
+1.20         (riouxp   04-Aug-08): 		$suffixIndex   = $prefixLen + length($tmpSeq);
+1.20         (riouxp   04-Aug-08): 
+1.21         (nbeck    04-Aug-09):         my $posAdjustLeft  = ${$dir{$key}}[$arrayKey] eq "FW"
+1.21         (nbeck    04-Aug-09):                            ? -$prefixLen
+1.21         (nbeck    04-Aug-09):                            : -$suffixLen;
+1.21         (nbeck    04-Aug-09):         my $posAdjustRight = ${$dir{$key}}[$arrayKey] eq "FW"
+1.21         (nbeck    04-Aug-09):                            ? $suffixLen
+1.21         (nbeck    04-Aug-09):                            : $prefixLen;
+1.20         (riouxp   04-Aug-08): 		
+1.11         (riouxp   07-Feb-07): 		$header .= sprintf(" %3s %s %6s:%6s %10s %s\n",
+1.1          (riouxp   16-Nov-06): 			($arrayKey+1),
+1.11         (riouxp   07-Feb-07): 			${$dir{$key}}[$arrayKey],
+1.20         (riouxp   04-Aug-08): 			(${$start{$key}}[$arrayKey] + $posAdjustLeft),
+1.20         (riouxp   04-Aug-08): 			(${$end{$key}}[$arrayKey]   + $posAdjustRight),
+1.11         (riouxp   07-Feb-07): 			${$eValue{$key}}[$arrayKey],
+1.1          (riouxp   16-Nov-06): 			$DATAFILE);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		print OUTMODEL $header;
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		my $headSeq;
+1.1          (riouxp   16-Nov-06): 		my $tailSeq;
+1.1          (riouxp   16-Nov-06): 		# If we need to print out the header sequence
+1.21         (nbeck    04-Aug-09): 		if($prefixLen > 0) {
+1.21         (nbeck    04-Aug-09): 			if(@{$dir{$key}}[$arrayKey]  =~ /^RC$/) { 
+1.1          (riouxp   16-Nov-06): 			# We need to reverse-complement the original sequence
+1.21         (nbeck    04-Aug-09): 				if(($prefixLen + @{$end{$key}}[$arrayKey]) < length($Rseqs->{$key})) {
+1.12         (riouxp   03-Apr-07): 					$headSeq = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $prefixLen);
+1.1          (riouxp   16-Nov-06): 					$headSeq = reverse($headSeq);
+1.1          (riouxp   16-Nov-06): 					$headSeq =~ tr/ACGTacgt/TGCAtgca/;
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				elsif(@{$end{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+1.12         (riouxp   03-Apr-07): 					$headSeq = "n" x ($prefixLen - (length($Rseqs->{$key}) - @{$end{$key}}[$arrayKey]));
+1.12         (riouxp   03-Apr-07): 					my $tmp = reverse(substr($Rseqs->{$key}, (@{$end{$key}}[$arrayKey]) , $prefixLen));
+1.1          (riouxp   16-Nov-06): 					$tmp =~ tr/ACGTacgt/TGCAtgca/;
+1.1          (riouxp   16-Nov-06): 					$headSeq .= $tmp;
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else {
+1.1          (riouxp   16-Nov-06): 					$headSeq =  "n" x $prefixLen;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.21         (nbeck    04-Aug-09): 				if((@{$start{$key}}[$arrayKey] - $prefixIndex) > 0) {
+1.12         (riouxp   03-Apr-07): 					$headSeq =  substr($Rseqs->{$key}, (@{$start{$key}}[$arrayKey] - $prefixIndex - 1), ($prefixLen));
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				elsif(@{$start{$key}}[$arrayKey] > 0 ) {
+1.1          (riouxp   16-Nov-06): 					$headSeq  = "n" x ($prefixLen - @{$start{$key}}[$arrayKey] + 1);
+1.12         (riouxp   03-Apr-07): 					$headSeq .=  substr($Rseqs->{$key}, 0, @{$start{$key}}[$arrayKey] - 1);
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else {
+1.1          (riouxp   16-Nov-06): 					$headSeq =  "n" x $prefixLen;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 			print OUTMODEL $headSeq;
+1.1          (riouxp   16-Nov-06): 			print $key . "\n" if $DEBUG;
+1.1          (riouxp   16-Nov-06): 		} 
+1.1          (riouxp   16-Nov-06): 		
+1.3          (riouxp   22-Jan-07): 		print OUTMODEL modifyModelSeqNew($tmpSeq, $structure, $prefixLen, \@erpinMaskNums);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		# If we need to print out the tail sequence
+1.21         (nbeck    04-Aug-09): 		if($suffixLen > 0) {
+1.21         (nbeck    04-Aug-09): 			if(@{$dir{$key}}[$arrayKey]  =~ /^RC$/) {
+1.1          (riouxp   16-Nov-06): 				# We need to reverse-complement the original sequence
+1.1          (riouxp   16-Nov-06): 				$suffixIndex   = @{$start{$key}}[$arrayKey] - $suffixLen;
+1.1          (riouxp   16-Nov-06): 				
+1.21         (nbeck    04-Aug-09): 				if($suffixIndex > 0) {
+1.12         (riouxp   03-Apr-07): 					$tailSeq = substr($Rseqs->{$key}, ($suffixIndex - 1), $suffixLen);
+1.1          (riouxp   16-Nov-06): 					$tailSeq = reverse($tailSeq);
+1.1          (riouxp   16-Nov-06): 					$tailSeq =~ tr/ACGTacgt/TGCAtgca/;
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				elsif (@{$start{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+1.12         (riouxp   03-Apr-07): 					$tailSeq  = substr(reverse($Rseqs->{$key}), (length($Rseqs->{$key}) - ($suffixLen + $suffixIndex) + 1), ($suffixLen + $suffixIndex));
+1.1          (riouxp   16-Nov-06): 					$tailSeq  =~ tr/ACGTacgt/TGCAtgca/;
+1.1          (riouxp   16-Nov-06): 					$tailSeq .= "n" x (($suffixIndex * -1) +1);
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else {
+1.1          (riouxp   16-Nov-06): 					$tailSeq =  "n" x $suffixLen;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				# We need to print out a pending sequence
+1.1          (riouxp   16-Nov-06): 				my $len = @{$end{$key}}[$arrayKey];
+1.1          (riouxp   16-Nov-06): 				
+1.21         (nbeck    04-Aug-09): 				if(($suffixLen + $len) <= length($Rseqs->{$key})) {
+1.12         (riouxp   03-Apr-07): 					$tailSeq = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $suffixLen);
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				elsif(@{$end{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+1.12         (riouxp   03-Apr-07): 					$tailSeq  = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $suffixLen);
+1.12         (riouxp   03-Apr-07): 					$tailSeq .= "n" x ($suffixLen - (length($Rseqs->{$key}) - @{$end{$key}}[$arrayKey]));
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else { 
+1.1          (riouxp   16-Nov-06): 					$tailSeq =  "n" x $suffixLen;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 			print OUTMODEL $tailSeq;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		print OUTMODEL "\n";
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	close OUTMODEL;
+1.1          (riouxp   16-Nov-06): 	close OUTMODELLOG;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	return ("$TMP_DIR/$outputModel",$numModels);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ###################################################
+1.1          (riouxp   16-Nov-06): ## FUNCTION OF MAIN PART OF THE SCRIPT           ##
+1.1          (riouxp   16-Nov-06): ###################################################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #How to use this script message
+1.21         (nbeck    04-Aug-09): sub Usage {
+1.21         (nbeck    04-Aug-09):     my $to_print  = "\nHow to - $BASENAME - All-in-parameters Version\n\n";
+1.21         (nbeck    04-Aug-09):        $to_print .= "Syntax :";
+1.21         (nbeck    04-Aug-09):     print BOLD, $to_print, RESET;
+1.5          (riouxp   23-Jan-07): 	print " (perl) $BASENAME training_set_file sequences_files [$BASENAME parameters] [ERPIN parameters]\n\n";
+1.21         (nbeck    04-Aug-09): 	print BOLD, "List of $BASENAME parameters :\n", RESET;
+1.21         (nbeck    04-Aug-09): 	print "     -v ERPIN_PATH    : to specify the path of a alternative Erpin version\n";
+1.21         (nbeck    04-Aug-09): 	print "     -r               : to disable removing of repeated sequences\n";
+1.21         (nbeck    04-Aug-09): 	print "     -e               : to sort by evalue the results\n";
+1.21         (nbeck    04-Aug-09): 	print "     -ec LCO UCO      : to activate Evalue filter with LCO = Lower cutoff and UCO = Upper cut off\n";
+1.1          (riouxp   16-Nov-06): 	print "                     those values must me between 0 and 100 and LCO < UCO\n";
+1.21         (nbeck    04-Aug-09): 	print "     -p  CUTOFF       : to activate phylogenetic distance filter with CUTOFF as percentage of sequences to remove\n";
+1.21         (nbeck    04-Aug-09):     print "     -pc ERPIN CUTOFF : Percentage of cutoff values defined by erpin.\n";
+1.21         (nbeck    04-Aug-09): 	print "     -i               : to reiterate the programm until the model cannot be better\n";
+1.21         (nbeck    04-Aug-09): 	print "     -ia              : to reinject the data of the original training set in each iteration\n";
+1.21         (nbeck    04-Aug-09): 	print "     -d DIR           : Allow to choose a specific directory in which $BASENAME will put all temporary files\n";
+1.21         (nbeck    04-Aug-09):     print "     -s               : strip final model: leftmost  and rightmost elements outside those\n";
+1.21         (nbeck    04-Aug-09):     print "                        select on the command-line will be deleted.\n";
+1.21         (nbeck    04-Aug-09):     print "     -F               : do not run \"mf2fasta\" on the input sequence.\n";
+1.21         (nbeck    04-Aug-09):     print "     -o filebase      : override final alignement filenames: filebase and filebase.log will\n";
+1.21         (nbeck    04-Aug-09):     print "                        be used instead.\n";
+1.21         (nbeck    04-Aug-09):     print "     -L keyword       : keyword is an optional label that will end up in the .log file for your\n";
+1.21         (nbeck    04-Aug-09):     print "                        convenience.\n";
+1.21         (nbeck    04-Aug-09): 	print BOLD, "\nExamples :\n\n", RESET;
+1.5          (riouxp   23-Jan-07): 	print ">$BASENAME training_set.epn sequences.all -v /erpin5.2.1.light/bin/erpin -r -ec 50 100 -p 50 -iaf -d logs 1,13 -add 2 3 -add 5 7 9 -logzero -5 -cutoff 10 15\n\n";
+1.5          (riouxp   23-Jan-07): 	print ">script_name         ts_file        seq_file    [-------------------${BASENAME}_Arguments---- ------------------] [---------------ERPIN_ARGUMENTS------------------]\n\n";       
+1.21         (nbeck    04-Aug-09): 	print BOLD, "\nSyntax for Erpin arguments :\n\n", RESET;
+1.1          (riouxp   16-Nov-06): 	print "Please see ERPIN documentation for further informations\n\n";
+1.1          (riouxp   16-Nov-06): 	exit(1);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): # read a sequences file and put everithing in a list
+1.21         (nbeck    04-Aug-09): sub readSeqFile {
+1.1          (riouxp   16-Nov-06): 	my $file = shift;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	open(DATA, $file) or die ("Could not open $file!");
+1.1          (riouxp   16-Nov-06): 	my @tmpData= <DATA>;
+1.1          (riouxp   16-Nov-06): 	close(DATA);
+1.1          (riouxp   16-Nov-06): 	
+1.13         (riouxp   03-Apr-07): 	my ($newDataRef, $removedDataRef) = MakeNewDataFile(\@tmpData);
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): 	if($DEBUG) {
+1.1          (riouxp   16-Nov-06): 		print "DEBUG: The removed sequences were;\n";
+1.21         (nbeck    04-Aug-09): 		foreach my $seq (@$removedDataRef) {
+1.21         (nbeck    04-Aug-09): 	        print "$seq" if ($seq =~ m/^>.*/);
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#Save Data into temporary datafile
+1.1          (riouxp   16-Nov-06): 	open(DATA, ">$TMPDATAFILE") or die "Could not make temporary data file\n";
+1.13         (riouxp   03-Apr-07): 	print DATA @$newDataRef;
+1.1          (riouxp   16-Nov-06): 	close(DATA);
+1.1          (riouxp   16-Nov-06): 	
+1.13         (riouxp   03-Apr-07): 	return $newDataRef;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #copy a file in a new file
+1.21         (nbeck    04-Aug-09): sub copyFile {
+1.1          (riouxp   16-Nov-06): 	my $inputFile = shift;
+1.1          (riouxp   16-Nov-06): 	my $outputFile = shift;
+1.21         (nbeck    04-Aug-09):     die "Could not copy '$inputFile': $!\n" unless -f $inputFile;
+1.21         (nbeck    04-Aug-09):     system("/bin/cp",$inputFile,$outputFile);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	return $outputFile;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #read the parameters in param file
+1.21         (nbeck    04-Aug-09): sub readParamFile {
+1.1          (riouxp   16-Nov-06): 	my ($erpinPath,$distpinPath,$mf2fastaPath);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	open (PARAM, $paramfile) or die "Unable to open $paramfile";
+1.21         (nbeck    04-Aug-09): 	while() {
+1.1          (riouxp   16-Nov-06): 		my $line = <PARAM>;
+1.21         (nbeck    04-Aug-09): 		if ($line =~/^>ERPIN_PATH$/) { $erpinPath = <PARAM>;next;}
+1.1          (riouxp   16-Nov-06): 		elsif ($line =~/^>DISTPIN$/) {$distpinPath = <PARAM>;next;}
+1.1          (riouxp   16-Nov-06): 		elsif ($line =~/^>MF2FASTA$/) {$mf2fastaPath = <PARAM>;next;}
+1.1          (riouxp   16-Nov-06): 		elsif ($line =~/^END$/) {last;}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	close PARAM;
+1.1          (riouxp   16-Nov-06): 	chomp($erpinPath);chomp($distpinPath);chomp($mf2fastaPath);
+1.1          (riouxp   16-Nov-06): 	return ($erpinPath,$distpinPath,$mf2fastaPath);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ############################
+1.1          (riouxp   16-Nov-06): ## WARNING => INFORMATION ##
+1.1          (riouxp   16-Nov-06): ############################
+1.1          (riouxp   16-Nov-06): #AFTER THIS LINE, FOLLOWING FUNCTION DO NOT USE GLOBAL VARIABLES ANYMORE
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #########################
+1.1          (riouxp   16-Nov-06): ## MAKEMODEL FUNCTIONS ##
+1.1          (riouxp   16-Nov-06): #########################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Get sequences from erpin output file
+1.21         (nbeck    04-Aug-09): sub GetSeqFromOutputFile {
+1.21         (nbeck    04-Aug-09): 	my ($lowerPerCutOff,$upperPerCutOff,$Rdata) = @_;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#locals variable
+1.1          (riouxp   16-Nov-06): 	my $header = "";
+1.12         (riouxp   03-Apr-07): 	my $Rseqs           = {};
+1.1          (riouxp   16-Nov-06): 	my @eValueOrder;
+1.1          (riouxp   16-Nov-06): 	my @originalOrder;
+1.21         (nbeck    04-Aug-09): 	my (%dir,%start,%end,%eValue,%reverseKey) = ((),(),(),(),());
+1.21         (nbeck    04-Aug-09): 	my ($arrayCounter,$countera,$counterb)    = (0,0,0); 
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	foreach my $line (@$Rdata) {
+1.1          (riouxp   16-Nov-06): 		chomp($line);
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 		if($line =~ m/>(.*)/) {
+1.4          (riouxp   22-Jan-07): 			$arrayCounter = 0 if $1 ne (defined($header) ? $header : "");
+1.1          (riouxp   16-Nov-06): 			$header = $1;
+1.1          (riouxp   16-Nov-06): 			next;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		elsif(!defined($header)) { next; }
+1.21         (nbeck    04-Aug-09): 		elsif($line =~ m/(FW|RC)\s+(\d+)\s+([\d]+)\.\.([\d]+)\s+([\d\.]+)\s+([\d\.e\-\+]+)$/) { 
+1.1          (riouxp   16-Nov-06): 			# FW   1     825..948      109.15  1.46e-36
+1.1          (riouxp   16-Nov-06): 			$countera++;
+1.1          (riouxp   16-Nov-06): 			push @{$dir{$header}},      $1;
+1.1          (riouxp   16-Nov-06): 			push @{$start{$header}},    $3;
+1.1          (riouxp   16-Nov-06): 			push @{$end{$header}},      $4;
+1.1          (riouxp   16-Nov-06): 			
+1.21         (nbeck    04-Aug-09): 			if( defined( $reverseKey{"$arrayCounter<->$1<->$header"} ) ) {
+1.21         (nbeck    04-Aug-09): 				print YELLOW,"DEBUG $countera: $arrayCounter<->$1<->$header has already been entered!\n" , RESET;
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				$reverseKey{"$arrayCounter<->$1<->$header"}  = $6;
+1.21         (nbeck    04-Aug-09): 				if($DEBUG) {
+1.21         (nbeck    04-Aug-09): 					print YELLOW,"DEBUG $countera: $arrayCounter<->$1<->$header- $6\n", RESET;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 			
+1.1          (riouxp   16-Nov-06): 			push @originalOrder, "$arrayCounter<->$1<->$header";
+1.1          (riouxp   16-Nov-06): 			push @{$eValue{$header}},   $6;
+1.1          (riouxp   16-Nov-06): 			$arrayCounter++;
+1.1          (riouxp   16-Nov-06): 			next;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		elsif(defined($header) and $line =~ /^$/){ $header = undef; next; }
+1.12         (riouxp   03-Apr-07): 		else { push @{$Rseqs->{$header}}, $line; }
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	# We must sort the order of the sequences by e-value
+1.21         (nbeck    04-Aug-09): 	foreach my $key (sort{$reverseKey{$a} <=> $reverseKey{$b}} keys %reverseKey) {
+1.1          (riouxp   16-Nov-06): 		$counterb++;
+1.1          (riouxp   16-Nov-06): 		push @eValueOrder, $key;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my $numberResults = @eValueOrder;
+1.1          (riouxp   16-Nov-06): 	my $first = int( ( (100 - $upperPerCutOff) / 100 ) * $numberResults);
+1.21         (nbeck    04-Aug-09): 	my $last  = int( ( (100 - $lowerPerCutOff) / 100 ) * $numberResults);
+1.1          (riouxp   16-Nov-06): 	@eValueOrder = @eValueOrder[$first..($last-1)];
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	if($DEBUG) {
+1.21         (nbeck    04-Aug-09):         my $string  = "DEBUG COUNTER IS $countera\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG COUNTER IS $counterb\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: seqs size          = " . keys(%$Rseqs) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: reverseKey size    = " . keys(%reverseKey) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: eValueOrder size   = " . scalar(@eValueOrder) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: originalOrder size = " . scalar(@originalOrder) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: dir size           = " . keys(%dir) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: start size         = " . keys(%start) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: end size           = " . keys(%end) . "\n";
+1.21         (nbeck    04-Aug-09):            $string .= "DEBUG: evalue size        = " . keys(%eValue) . "\n";
+1.21         (nbeck    04-Aug-09): 		print YELLOW,$string, RESET;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	
+1.12         (riouxp   03-Apr-07): 	return($Rseqs, \@eValueOrder, \@originalOrder, \%dir, \%start, \%end, \%eValue, $first, $last, $numberResults);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #get structure lines from a model file
+1.21         (nbeck    04-Aug-09): sub GetStructureFromModelFile {
+1.13         (riouxp   03-Apr-07): 	my $Rmodel = shift;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	#local vars
+1.1          (riouxp   16-Nov-06): 	my $header;
+1.1          (riouxp   16-Nov-06): 	my $structure;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	foreach my $line (@$Rmodel) {
+1.21         (nbeck    04-Aug-09): 		if($line =~ m/>.*/) {
+1.21         (nbeck    04-Aug-09): 			if($line =~ m/>structure/) {
+1.1          (riouxp   16-Nov-06): 				$header = $1;
+1.1          (riouxp   16-Nov-06): 				next;
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 			else { last; }
+1.1          (riouxp   16-Nov-06): 		}
+1.21         (nbeck    04-Aug-09): 		else {
+1.21         (nbeck    04-Aug-09): 			if(!defined($structure)) {
+1.1          (riouxp   16-Nov-06): 				$structure = $line;
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				$structure .= $line;
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	return $structure; 
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub GetStructurePos {
+1.21         (nbeck    04-Aug-09): 	my ($structure,$pos) = @_;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	die "You can't have a mask position that is greater than 99!\n" 
+1.21         (nbeck    04-Aug-09):         if ($pos > 99);
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	my $pos1      = int($pos/10);
+1.1          (riouxp   16-Nov-06): 	my $pos2      = int($pos%10);
+1.1          (riouxp   16-Nov-06): 	my ($struct1, $struct2) = split /\n/, $structure;
+1.1          (riouxp   16-Nov-06): 	my $posA      = index($struct1, $pos1);
+1.1          (riouxp   16-Nov-06): 	my $posB      = index($struct2, $pos2, $posA);
+1.1          (riouxp   16-Nov-06):   
+1.1          (riouxp   16-Nov-06): 	return $posB;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #get length of the structure line
+1.21         (nbeck    04-Aug-09): sub GetStructureLength {
+1.1          (riouxp   16-Nov-06): 	my $structure = shift;
+1.1          (riouxp   16-Nov-06): 	my ($struct1, $struct2) = split /\n/, $structure;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	return length($struct2);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub makeReportSeq {
+1.1          (riouxp   16-Nov-06): 	my $inSeq = shift;
+1.1          (riouxp   16-Nov-06): 	my @maxBitLen = @_;
+1.1          (riouxp   16-Nov-06): 	my $outSeq = "";
+1.1          (riouxp   16-Nov-06): 	my @seqBits = split(/\./, $inSeq);
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	for(my $i=0; $i<@seqBits;$i++) {
+1.21         (nbeck    04-Aug-09): 		if($seqBits[$i] =~ m/^[\-]+$/) {
+1.21         (nbeck    04-Aug-09): 			if($maxBitLen[$i] > 16) {
+1.1          (riouxp   16-Nov-06): 				$outSeq .= " " x 17;
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				$outSeq .= " " x ($maxBitLen[$i] + 1);
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		#If this is lowercase
+1.21         (nbeck    04-Aug-09): 		elsif($seqBits[$i] =~ m/[a-z]/) {
+1.1          (riouxp   16-Nov-06): 			$seqBits[$i] =~ s/-//g;
+1.1          (riouxp   16-Nov-06): 			
+1.1          (riouxp   16-Nov-06): 			my $lengthSeqBits = length($seqBits[$i]);
+1.1          (riouxp   16-Nov-06): 			
+1.21         (nbeck    04-Aug-09): 			if($lengthSeqBits > 16) {
+1.1          (riouxp   16-Nov-06): 				$outSeq .= substr($seqBits[$i], 0, 3);
+1.1          (riouxp   16-Nov-06): 				
+1.21         (nbeck    04-Aug-09): 				if($lengthSeqBits/1000 >= 1) {
+1.1          (riouxp   16-Nov-06): 					$outSeq .= "..(" . $lengthSeqBits  . ").." .  substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				elsif(($lengthSeqBits/100) >= 1) {
+1.1          (riouxp   16-Nov-06): 					$outSeq .= "..(" . $lengthSeqBits  . ")..." . substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else {
+1.1          (riouxp   16-Nov-06): 					$outSeq .= "...(" . $lengthSeqBits  . ")..." .substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				my $filler;
+1.1          (riouxp   16-Nov-06): 				
+1.21         (nbeck    04-Aug-09): 				if($maxBitLen[$i] > 16) {
+1.1          (riouxp   16-Nov-06): 					$filler = 16 - $lengthSeqBits;
+1.1          (riouxp   16-Nov-06): 				}
+1.21         (nbeck    04-Aug-09): 				else {
+1.1          (riouxp   16-Nov-06): 					$filler = $maxBitLen[$i] - $lengthSeqBits;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 				
+1.1          (riouxp   16-Nov-06): 				$outSeq .= $seqBits[$i] . " " . " " x $filler;
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 		}
+1.21         (nbeck    04-Aug-09): 		else {
+1.1          (riouxp   16-Nov-06): 			$outSeq .= $seqBits[$i] . " ";
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	return $outSeq;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.3          (riouxp   22-Jan-07): sub modifyModelSeqNew {
+1.3          (riouxp   22-Jan-07):   my $model               = shift;
+1.3          (riouxp   22-Jan-07):   my ($struct1, $struct2) = split("\n", shift);
+1.3          (riouxp   22-Jan-07):   my $prefixLen           = shift;
+1.3          (riouxp   22-Jan-07):   my $erpinMaskNums       = shift; # array ref
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):   my %masked = map { int($_ + 0) => 1 } @$erpinMaskNums;
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):   my @structs = (); # will contain { DOMAIN, LEN, MODELSUBS } for each substruct of the structure
+1.3          (riouxp   22-Jan-07):   my $prevdomain = "";
+1.7          (riouxp   30-Jan-07):   my $blocknum=-1; # will immediately increase to 0 in next loop
+1.3          (riouxp   22-Jan-07):   for (my $i=0;$i<length($model);$i++) {
+1.3          (riouxp   22-Jan-07):       my $domain = substr($struct1,$i+$prefixLen,1) . substr($struct2,$i+$prefixLen,1); # "01", "02" ... "99".
+1.3          (riouxp   22-Jan-07):       $blocknum++ if $domain ne $prevdomain;
+1.3          (riouxp   22-Jan-07):       $structs[$blocknum] ||= { "DOMAIN" => $domain, "LEN" => 0, "MODEL" => "" };
+1.3          (riouxp   22-Jan-07):       $structs[$blocknum]->{"LEN"}++;
+1.3          (riouxp   22-Jan-07):       $prevdomain=$domain;
+1.3          (riouxp   22-Jan-07):   }
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):   my $tmp = $model; # destructively split
+1.3          (riouxp   22-Jan-07):   foreach my $substr (@structs) {
+1.3          (riouxp   22-Jan-07):       my $blocklen = $substr->{"LEN"};
+1.3          (riouxp   22-Jan-07):       $substr->{"MODEL"} = substr($tmp,0,$blocklen); # first $blocklen chars
+1.3          (riouxp   22-Jan-07):       $tmp = substr($tmp,$blocklen); # reminder
+1.3          (riouxp   22-Jan-07):   }
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):   foreach my $substr (@structs) {
+1.3          (riouxp   22-Jan-07):       my $domain = $substr->{"DOMAIN"};
+1.3          (riouxp   22-Jan-07):       my $len    = $substr->{"LEN"};
+1.3          (riouxp   22-Jan-07):       my $model  = $substr->{"MODEL"};
+1.3          (riouxp   22-Jan-07):       $substr->{"NEWMODEL"} = $model; # by default, unchanged.
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):       my $domAsInt = int($domain + 0);
+1.3          (riouxp   22-Jan-07):       next if exists($masked{$domAsInt}); # leave unchanged if not selected in ERPIN args
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):       my $nodash = $model;
+1.3          (riouxp   22-Jan-07):       $nodash =~ s/-+//g;
+1.21         (nbeck    04-Aug-09):       my $numdash    = length($model)-length($nodash);
+1.3          (riouxp   22-Jan-07):       my $beforedash = substr($nodash,0,int(length($nodash)/2)); # first half
+1.3          (riouxp   22-Jan-07):       my $afterdash  = substr($nodash,length($beforedash));      # second half
+1.21         (nbeck    04-Aug-09):       my $newmodel   = $beforedash . ("-" x $numdash) . $afterdash;
+1.3          (riouxp   22-Jan-07):       $substr->{"NEWMODEL"} = $newmodel;
+1.21         (nbeck    04-Aug-09):    }
+1.3          (riouxp   22-Jan-07): 
+1.3          (riouxp   22-Jan-07):   my $newmodel = "";
+1.3          (riouxp   22-Jan-07):   foreach my $substr (@structs) {
+1.3          (riouxp   22-Jan-07):       $newmodel .= $substr->{"NEWMODEL"};
+1.3          (riouxp   22-Jan-07):   }
+1.21         (nbeck    04-Aug-09):   return $newmodel;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ##########################################
+1.7          (riouxp   30-Jan-07): # New BRACKETS System for RNAweasel      #
+1.7          (riouxp   30-Jan-07): ##########################################
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07): sub MakeLogBracketsNew {
+1.7          (riouxp   30-Jan-07):     my $StructureLines = shift;
+1.7          (riouxp   30-Jan-07):     my $MaxLengths     = shift; # ref to array of max sizes for all elements (each <= to StructL)
+1.7          (riouxp   30-Jan-07):     my $ErpinMaskNums  = shift; # ref to array of selected elements
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07):     my ($struct1, $struct2) = split("\n", $StructureLines);
+1.7          (riouxp   30-Jan-07):     my %masked = map { int($_ + 0) => 1 } @$ErpinMaskNums;
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07):     my @structs = (); # will contain { ELEMID, LEN, MAXLEN, SYM } for each element of the structure
+1.7          (riouxp   30-Jan-07):     my $prevElemID = "";
+1.7          (riouxp   30-Jan-07):     my $elemnum=-1; # will immediately increase to 0 in next loop
+1.7          (riouxp   30-Jan-07):     for (my $i=0;$i<length($struct1);$i++) {
+1.7          (riouxp   30-Jan-07):         my $ElemID = substr($struct1,$i,1) . substr($struct2,$i,1); # "01", "02" ... "99".
+1.7          (riouxp   30-Jan-07):         $elemnum++ if $ElemID ne $prevElemID;
+1.7          (riouxp   30-Jan-07):         $structs[$elemnum] ||= { "ELEMID" => $ElemID, "LEN" => 0,  };
+1.7          (riouxp   30-Jan-07):         $structs[$elemnum]->{"LEN"}++;
+1.7          (riouxp   30-Jan-07):         $prevElemID=$ElemID;
+1.7          (riouxp   30-Jan-07):     }
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07):     # the @$MaxLengths array is in same order as structure elements;
+1.7          (riouxp   30-Jan-07):     # however the entries start at an offset with respect to the full struct.
+1.7          (riouxp   30-Jan-07):     my @sortedEMN = sort { $a <=> $b } @$ErpinMaskNums;
+1.7          (riouxp   30-Jan-07):     my $minElem = $sortedEMN[0];
+1.7          (riouxp   30-Jan-07):     my $offset = undef;
+1.7          (riouxp   30-Jan-07):     for (my $n=0;$n<@structs;$n++) {
+1.7          (riouxp   30-Jan-07):         my $struct = $structs[$n];
+1.7          (riouxp   30-Jan-07):         my $elemID = $struct->{"ELEMID"};
+1.7          (riouxp   30-Jan-07):         next if int($elemID+0) != $minElem;
+1.7          (riouxp   30-Jan-07):         $offset = $n;
+1.7          (riouxp   30-Jan-07):         last;
+1.7          (riouxp   30-Jan-07):     }
+1.7          (riouxp   30-Jan-07):     die "Cannot find element #$minElem in structure?\nStruct:\n$StructureLines"
+1.7          (riouxp   30-Jan-07):         unless defined($offset);
+1.7          (riouxp   30-Jan-07):     for (my $n=0;$n<@$MaxLengths;$n++) {
+1.7          (riouxp   30-Jan-07):         my $max = $MaxLengths->[$n];
+1.7          (riouxp   30-Jan-07):         $structs[$n+$offset]->{"MAXLEN"} = $max;
+1.7          (riouxp   30-Jan-07):     }
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07):     # Identify the selected elements and sets what characters to display
+1.7          (riouxp   30-Jan-07):     # for the bracket expression.
+1.7          (riouxp   30-Jan-07):     my %seenID = ();
+1.7          (riouxp   30-Jan-07):     for (my $n=0;$n<@structs;$n++) {
+1.7          (riouxp   30-Jan-07):         my $struct = $structs[$n];
+1.7          (riouxp   30-Jan-07):         my $elemID = $struct->{"ELEMID"};
+1.7          (riouxp   30-Jan-07):         if ($masked{int($elemID + 0)}) {
+1.7          (riouxp   30-Jan-07):             $struct->{"SELECTED"}="YES";  # Right now it's not used.
+1.7          (riouxp   30-Jan-07):         }
+1.7          (riouxp   30-Jan-07):         if (exists $seenID{$elemID}) {
+1.7          (riouxp   30-Jan-07):             $seenID{$elemID}->{"SYM"} = "[";
+1.7          (riouxp   30-Jan-07):             $struct->{"SYM"}          = "]";
+1.7          (riouxp   30-Jan-07):         } else {
+1.7          (riouxp   30-Jan-07):             $struct->{"SYM"}          = " ";
+1.7          (riouxp   30-Jan-07):             $seenID{$elemID} = $struct; # remember it for future use (for [ and ] maybe)
+1.7          (riouxp   30-Jan-07):         }
+1.7          (riouxp   30-Jan-07):     }
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07):     # Ok, we have all the info, create the bracket line.
+1.7          (riouxp   30-Jan-07):     my $brackets = "";
+1.7          (riouxp   30-Jan-07):     for (my $n=0;$n<@structs;$n++) {
+1.7          (riouxp   30-Jan-07):         my $struct = $structs[$n];
+1.7          (riouxp   30-Jan-07):         next unless exists $struct->{"MAXLEN"}; # we only show some elems
+1.8          (riouxp   30-Jan-07):         my $maxlen   = $struct->{"MAXLEN"};
+1.8          (riouxp   30-Jan-07):         my $sym      = $struct->{"SYM"} || "?";
+1.8          (riouxp   30-Jan-07):         my $selected = $struct->{"SELECTED"};
+1.7          (riouxp   30-Jan-07):         $brackets .= " " if $brackets ne "";
+1.8          (riouxp   30-Jan-07):         if ($selected) {
+1.8          (riouxp   30-Jan-07):             $brackets .= $sym x $maxlen;
+1.8          (riouxp   30-Jan-07):         } else {
+1.8          (riouxp   30-Jan-07):             # This 16 constant must match the rules in makeReportSeq()
+1.8          (riouxp   30-Jan-07):             $brackets .= $sym x ($maxlen < 16 ? $maxlen : 16);
+1.8          (riouxp   30-Jan-07):         }
+1.7          (riouxp   30-Jan-07):     }
+1.21         (nbeck    04-Aug-09):     return $brackets;
+1.7          (riouxp   30-Jan-07): }
+1.7          (riouxp   30-Jan-07): 
+1.1          (riouxp   16-Nov-06): ######################
+1.1          (riouxp   16-Nov-06): ## Other FUNCTIONS ##
+1.1          (riouxp   16-Nov-06): ######################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ##-- Methode "MakeNewDataFile"
+1.1          (riouxp   16-Nov-06): ##-- ouvre un fichier fasta et stocke toutes les sequences dans un hash
+1.1          (riouxp   16-Nov-06): ##-- Clé = NOM SEQUENCE --- Valeur = SEQUENCE
+1.1          (riouxp   16-Nov-06): ##-- si 2 clés sont identiques, la 2eme clé est ignorée
+1.21         (nbeck    04-Aug-09): sub MakeNewDataFile {
+1.13         (riouxp   03-Apr-07): 	my $fasta_data = shift;
+1.1          (riouxp   16-Nov-06): 	my %headers = ();
+1.1          (riouxp   16-Nov-06): 	my @seqs;
+1.1          (riouxp   16-Nov-06): 	my @removedSeqs;
+1.1          (riouxp   16-Nov-06): 	my $skipFlag = 0;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	foreach my $line (@$fasta_data) {
+1.1          (riouxp   16-Nov-06): 		chomp($line);
+1.1          (riouxp   16-Nov-06): 		
+1.1          (riouxp   16-Nov-06): 		#si c'est une nouvelle entree/sequence, reconaissable par >
+1.21         (nbeck    04-Aug-09): 		if($line =~ m/^>(.*)/) {
+1.21         (nbeck    04-Aug-09): 			if(defined($headers{$1})) {
+1.21         (nbeck    04-Aug-09): 				if ($DEBUG) {
+1.21         (nbeck    04-Aug-09): 					print YELLOW,"The following sequence was already found, skipping\n$1\n", RESET;
+1.1          (riouxp   16-Nov-06): 				}
+1.1          (riouxp   16-Nov-06): 				# Let's keep a list of the sequences we remove
+1.1          (riouxp   16-Nov-06): 				push @removedSeqs, ">$1\n";
+1.1          (riouxp   16-Nov-06): 				$skipFlag = 1;
+1.1          (riouxp   16-Nov-06): 				next;
+1.1          (riouxp   16-Nov-06): 			}
+1.21         (nbeck    04-Aug-09): 			else {
+1.1          (riouxp   16-Nov-06): 				$headers{$1} = 1;
+1.1          (riouxp   16-Nov-06): 				push @seqs, ">$1\n";
+1.1          (riouxp   16-Nov-06): 				$skipFlag = 0;
+1.1          (riouxp   16-Nov-06): 				next;
+1.1          (riouxp   16-Nov-06): 			}
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		#si le flag est activé, c'est une sequence qu'on a deja
+1.1          (riouxp   16-Nov-06): 		#on stocke alors dans le tableau des sequences a oter.
+1.21         (nbeck    04-Aug-09): 		elsif($skipFlag) {
+1.1          (riouxp   16-Nov-06): 			$line =~ s/\s+//g;
+1.1          (riouxp   16-Nov-06): 			push @removedSeqs, "$line\n";
+1.1          (riouxp   16-Nov-06): 			next;
+1.1          (riouxp   16-Nov-06): 		} 
+1.1          (riouxp   16-Nov-06): 		#si c'est une ligne vide, on saute
+1.1          (riouxp   16-Nov-06): 		elsif($line =~ m/^$/) { next; }
+1.1          (riouxp   16-Nov-06): 		#dans ce dernier cas c'est une ligne fasta normale, 
+1.1          (riouxp   16-Nov-06): 		#on l'ajoute au tableau des sequences a conserver
+1.21         (nbeck    04-Aug-09): 		else {
+1.1          (riouxp   16-Nov-06): 			$line =~ s/\s+//g;
+1.1          (riouxp   16-Nov-06): 			push @seqs, "$line\n";
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	#on renvoie les 2 tableaux : sequences conservées, sequences otées (dupliquées)
+1.1          (riouxp   16-Nov-06): 	return(\@seqs, \@removedSeqs);
+1.1          (riouxp   16-Nov-06): } 
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #--Methode "GetSeqFromDataFile"
+1.1          (riouxp   16-Nov-06): #--lit une liste et renvoie un hachage de séquences
+1.21         (nbeck    04-Aug-09): sub GetSeqFromDataFile {
+1.12         (riouxp   03-Apr-07): 	my $data = shift; # was @data
+1.1          (riouxp   16-Nov-06): 	my $header;
+1.1          (riouxp   16-Nov-06): 	my %seqs = ();
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	foreach my $line (@$data) {
+1.1          (riouxp   16-Nov-06): 		chomp($line);
+1.1          (riouxp   16-Nov-06): 		#si la ligne est un entete, on le stocke
+1.21         (nbeck    04-Aug-09): 		if($line =~ m/^>(.*)/) {
+1.1          (riouxp   16-Nov-06): 			$header = $1;
+1.12         (riouxp   03-Apr-07): 			$seqs{$header} ||= "";
+1.1          (riouxp   16-Nov-06): 			next;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 		#si l'entete est non defini ou si la ligne est vide, on saute
+1.1          (riouxp   16-Nov-06): 		elsif((!defined($header)) or ($line =~ m/^$/)) {next;} 
+1.21         (nbeck    04-Aug-09): 		else {
+1.12         (riouxp   03-Apr-07): 			$line =~ tr/a-zA-Z//cd;
+1.12         (riouxp   03-Apr-07): 			$seqs{$header} .= $line;
+1.1          (riouxp   16-Nov-06): 		}
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	#on renvoie le hash qui contient les entete en cle et les sequences en valeurs
+1.12         (riouxp   03-Apr-07): 	return \%seqs;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub Remove_Repeated_Sequences {
+1.21         (nbeck    04-Aug-09): 	my ($command,$modifiedModel_path) = @_;
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): 	if(!system($command) ) {
+1.21         (nbeck    04-Aug-09): 		print GREEN,"Successfully removed repeated sequences from training set\n\n", RESET;
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	else { die("Impossible to remove repeated sequences via Distpin\n"); }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): 	return $modifiedModel_path;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub Remove_Seq_By_Phylo_Distance {
+1.21         (nbeck    04-Aug-09): 	my ($command,$modifiedModel_path) = @_;
+1.21         (nbeck    04-Aug-09): 	
+1.21         (nbeck    04-Aug-09): 	print GREEN,"Calculating distance.....\n", RESET;
+1.21         (nbeck    04-Aug-09): 	
+1.21         (nbeck    04-Aug-09): 	if(!system($command) ) {
+1.21         (nbeck    04-Aug-09): 		print GREEN,"Successfully removed sequences using distance method\n", RESET;
+1.21         (nbeck    04-Aug-09): 	}
+1.21         (nbeck    04-Aug-09): 	else {
+1.21         (nbeck    04-Aug-09): 		print RED,"Your cutoff selection has left no sequences!\n", RESET;
+1.1          (riouxp   16-Nov-06): 		exit(1);
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	return $modifiedModel_path;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #################################
+1.1          (riouxp   16-Nov-06): ##-- FONCTIONS UTILES STEP 1 --##
+1.1          (riouxp   16-Nov-06): #################################
+1.1          (riouxp   16-Nov-06): #--methode "ParseErpinArgs"
+1.21         (nbeck    04-Aug-09): sub ParseErpinArgs {
+1.21         (nbeck    04-Aug-09): # erpin giD.epn test.seq 2,21 -add 2 3 -add 4 5 6 8 -add 9 -add 11 12 13 14 15 -add 17 18 20 21 -logzero -2 -cutoff 7 13 22 39 52
+1.1          (riouxp   16-Nov-06): 	my @command = @_;
+1.21         (nbeck    04-Aug-09): 	my $numbers = [];
+1.21         (nbeck    04-Aug-09):     my @cutoffVal;
+1.1          (riouxp   16-Nov-06): 	my $flag = 0;
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09):     my $count = -1;
+1.21         (nbeck    04-Aug-09): 	foreach my $bit (@command) {
+1.21         (nbeck    04-Aug-09):         $count++;
+1.1          (riouxp   16-Nov-06): 		chomp($bit);
+1.21         (nbeck    04-Aug-09): 		if($bit =~ m/^-.*$/) {
+1.21         (nbeck    04-Aug-09): 			if   ($bit =~ m/^-add$/)    { $flag = 1;}
+1.21         (nbeck    04-Aug-09):             elsif($bit =~ m/^-cutoff$/) {
+1.21         (nbeck    04-Aug-09):                 $flag = 2; 
+1.21         (nbeck    04-Aug-09):                 splice(@ERPINARGS,$count,1);
+1.21         (nbeck    04-Aug-09):                 $count--;
+1.21         (nbeck    04-Aug-09):             }
+1.1          (riouxp   16-Nov-06): 			else { $flag = 0;}
+1.1          (riouxp   16-Nov-06): 			next;
+1.1          (riouxp   16-Nov-06): 		}
+1.21         (nbeck    04-Aug-09): 		push (@$numbers,$bit)   if ( ($flag == 1) and ($bit =~ m/^\d+$/));
+1.21         (nbeck    04-Aug-09):         if ( ($flag == 2) and ($bit =~ /^\d+(\.\d+)?$/)) {
+1.21         (nbeck    04-Aug-09):             push (@cutoffVal,$bit);
+1.21         (nbeck    04-Aug-09):             splice(@ERPINARGS,$count,1);
+1.21         (nbeck    04-Aug-09):             $count--;
+1.21         (nbeck    04-Aug-09):         }
+1.1          (riouxp   16-Nov-06): 	}
+1.21         (nbeck    04-Aug-09):     my $cutoff  = join(" ",@cutoffVal);
+1.21         (nbeck    04-Aug-09):        @$numbers = sort { $a <=> $b } @$numbers;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09): 	return ($numbers, $cutoff);
+1.21         (nbeck    04-Aug-09): }
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub DefineCutoffWithPourcent {
+1.21         (nbeck    04-Aug-09):     my ($model_file,$FileForCut,$erpinArg,$cutoff) = @_;
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09):     open(CUTOFF, ">$FileForCut") or die ("Could not open file for cutoff!\n");
+1.21         (nbeck    04-Aug-09):     print CUTOFF ">SeqForCutoff\nT\n";
+1.21         (nbeck    04-Aug-09):     close(CUTOFF);
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my ($erpinOut,$erpinErr) = ("$FileForCut.out","$FileForCut.err");
+1.21         (nbeck    04-Aug-09):     &RunErpin($FileForCut,$model_file,$erpinArg,$erpinOut,$erpinErr);
+1.21         (nbeck    04-Aug-09):     my $BestCutoff   = &DefineBestcutoff($erpinOut);
+1.21         (nbeck    04-Aug-09):     my $newCutoff    = " ";
+1.21         (nbeck    04-Aug-09):     my $HaveNegValue = 0;
+1.21         (nbeck    04-Aug-09):     foreach my $b_cutoff (@$BestCutoff) {
+1.21         (nbeck    04-Aug-09):         if ($b_cutoff < 0) {
+1.21         (nbeck    04-Aug-09):             $HaveNegValue = 1;
+1.21         (nbeck    04-Aug-09):             print "Cutoff values defined by erpin contain negative value '$b_cutoff', uses values of user.\n";
+1.21         (nbeck    04-Aug-09):             last;
+1.21         (nbeck    04-Aug-09):         }
+1.21         (nbeck    04-Aug-09):         my $PourcentCutoff = ( $b_cutoff * $POURCENT) / 100;
+1.21         (nbeck    04-Aug-09):         $PourcentCutoff = arrondi($PourcentCutoff,1);
+1.21         (nbeck    04-Aug-09):         $newCutoff .= "$PourcentCutoff ";
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     $newCutoff = $cutoff if $HaveNegValue;
+1.21         (nbeck    04-Aug-09):     return $newCutoff;
+1.21         (nbeck    04-Aug-09): }
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub RunErpin {
+1.21         (nbeck    04-Aug-09):     my ($nr_genome,$nr_model,$erpinArg,$erpinOut,$erpinErr,$Item_num,$cutoff) = @_;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     print STDERR "Running erpin for item $Item_num...\n" if $Item_num;
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my $ret = "";
+1.21         (nbeck    04-Aug-09):     if (defined($cutoff)) {
+1.21         (nbeck    04-Aug-09):         print STDERR "erpin $nr_model $nr_genome @$erpinArg -cutoff $cutoff\n" if $DEBUG;
+1.21         (nbeck    04-Aug-09):         $ret = system("erpin $nr_model $nr_genome @$erpinArg -cutoff $cutoff > $erpinOut 2> $erpinErr");
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     else {
+1.21         (nbeck    04-Aug-09):         print STDERR "erpin $nr_model $nr_genome @$erpinArg\n" if $DEBUG;
+1.21         (nbeck    04-Aug-09):         $ret = system("erpin $nr_model $nr_genome @$erpinArg > $erpinOut 2> $erpinErr");
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     if (($ret >> 8) > 1 || (-s "$erpinOut" == 0) ) {
+1.21         (nbeck    04-Aug-09):         print STDERR "There was an error running 'erpin'.\n";
+1.21         (nbeck    04-Aug-09):         print STDERR "Content of STDERR output:\n";
+1.21         (nbeck    04-Aug-09):         system("cat",$erpinErr);
+1.21         (nbeck    04-Aug-09):         exit 0; # cleanup will occur in END {}
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09): }
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub DefineBestcutoff {
+1.21         (nbeck    04-Aug-09):     my $OutFile = shift;
+1.21         (nbeck    04-Aug-09):     my $BestCutoff = [];
+1.21         (nbeck    04-Aug-09):     
+1.21         (nbeck    04-Aug-09):     my $ifh = new IO::File "<$OutFile";
+1.21         (nbeck    04-Aug-09):     while (my $line = <$ifh>) {
+1.21         (nbeck    04-Aug-09):         next if $line !~ m/^cutoff:\s+(.+)/;
+1.21         (nbeck    04-Aug-09):         push(@$BestCutoff,$1);
+1.21         (nbeck    04-Aug-09):     }
+1.21         (nbeck    04-Aug-09):     return $BestCutoff;
+1.21         (nbeck    04-Aug-09): }
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub arrondi {
+1.21         (nbeck    04-Aug-09):     my ($n,$precision) = @_;    
+1.21         (nbeck    04-Aug-09):     return int((10**$precision)*$n + 0.5) / (10**$precision);
+1.21         (nbeck    04-Aug-09): }
+1.21         (nbeck    04-Aug-09): 
+1.21         (nbeck    04-Aug-09): sub CreateFileForCutoff {
+1.21         (nbeck    04-Aug-09):     my $FileForCut = "$TMP_DIR/for_cutoff";
+1.21         (nbeck    04-Aug-09):     open(CUTOFF, ">$FileForCut") or die ("Could not open file for cutoff!\n");
+1.21         (nbeck    04-Aug-09):     print CUTOFF ">SeqForCutoff\nT\n";
+1.21         (nbeck    04-Aug-09):     close(CUTOFF);
+1.21         (nbeck    04-Aug-09):     return $FileForCut;
+1.21         (nbeck    04-Aug-09): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #################################
+1.1          (riouxp   16-Nov-06): ##-- FONCTIONS UTILES STEP 2 --##
+1.1          (riouxp   16-Nov-06): #################################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #--Methode "CounteModelsInFile"
+1.21         (nbeck    04-Aug-09): sub CounteModelsInFile {
+1.1          (riouxp   16-Nov-06): 	my $fileName = shift;
+1.1          (riouxp   16-Nov-06): 	return ((`cat $fileName |grep ">"| wc -l`) -1);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.21         (nbeck    04-Aug-09): sub RemoveStructureLines {
+1.1          (riouxp   16-Nov-06): 	my $filename = shift;
+1.21         (nbeck    04-Aug-09): 	my $printall = 0;
+1.1          (riouxp   16-Nov-06): 	my $filedata;
+1.1          (riouxp   16-Nov-06): 	
+1.1          (riouxp   16-Nov-06): 	open (FILE,$filename) or die ("Could not open $filename");
+1.1          (riouxp   16-Nov-06): 	
+1.21         (nbeck    04-Aug-09): 	while (my $line = <FILE>) {
+1.1          (riouxp   16-Nov-06): 		if ($printall) {$filedata .= $line;next;}
+1.1          (riouxp   16-Nov-06): 		if ($line =~ m/^>structure/) {next;}
+1.1          (riouxp   16-Nov-06): 		if ($line =~ m/^>(.*)/) 
+1.1          (riouxp   16-Nov-06): 		{ $printall = 1;$filedata .= $line; }
+1.1          (riouxp   16-Nov-06): 	}
+1.1          (riouxp   16-Nov-06): 	close (FILE);
+1.1          (riouxp   16-Nov-06): 	return $filedata;
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): ##########################################
+1.1          (riouxp   16-Nov-06): # Interface with User for RNAweasel      #
+1.1          (riouxp   16-Nov-06): ##########################################
+1.1          (riouxp   16-Nov-06): # Last Revision : 24/07/2006             #
+1.1          (riouxp   16-Nov-06): # By Yann Lienhart                       #
+1.1          (riouxp   16-Nov-06): ##########################################
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Check if the file in argument exist
+1.21         (nbeck    04-Aug-09): sub checkFile {
+1.21         (nbeck    04-Aug-09): 	my $File = shift;
+1.21         (nbeck    04-Aug-09): 	die "Sequence file $File does not exist\n" if (!-e $File );
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Check if the related programs like Erpin & distpin can be found
+1.21         (nbeck    04-Aug-09): sub checkRelatedProgs {
+1.21         (nbeck    04-Aug-09): 	my ($ProgPath,$ProgName) = @_;
+1.21         (nbeck    04-Aug-09): 	
+1.21         (nbeck    04-Aug-09):     die "Unable to find $ProgName at $ProgPath. Please ask your Systems Administrator to check this out\n"
+1.21         (nbeck    04-Aug-09):         if (!-e $ProgPath);
+1.1          (riouxp   16-Nov-06): }
+1.1          (riouxp   16-Nov-06): 
+1.1          (riouxp   16-Nov-06): #Erpin error when no results
+1.21         (nbeck    04-Aug-09): sub noErpinResultError {
+1.21         (nbeck    04-Aug-09):     my $to_print  = "****************************************\n";
+1.21         (nbeck    04-Aug-09):        $to_print .= "*  There was a problem running Erpin   *\n";
+1.21         (nbeck    04-Aug-09):        $to_print .= "*     It did not produce an output     *\n";
+1.21         (nbeck    04-Aug-09):        $to_print .= "* Run Erpin directly for error messages*\n";
+1.21         (nbeck    04-Aug-09):        $to_print .= "****************************************\n"; 
+1.21         (nbeck    04-Aug-09): 	print RED,$to_print, RESET;
+1.1          (riouxp   16-Nov-06): 	exit(1);
+1.1          (riouxp   16-Nov-06): }
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07): sub MakeStrippedModel {
+1.9          (riouxp   02-Feb-07):     my $modelfile     = shift;
+1.9          (riouxp   02-Feb-07):     my $newfile       = shift;
+1.9          (riouxp   02-Feb-07):     my $erpinMaskNums = shift;  # just the numbers of the elements selected with -add in erpin
+1.9          (riouxp   02-Feb-07):     my $region        = shift;  # "1,21" or "-3,17" etc like in erpin.
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     my ($RegLeft,$RegRight) = split(/,/,$region);
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     my $infh = new IO::File "<$modelfile"
+1.9          (riouxp   02-Feb-07):         or die "Cannot read from training set '$modelfile': $!\n";
+1.9          (riouxp   02-Feb-07):     my @model = <$infh>;
+1.9          (riouxp   02-Feb-07):     $infh->close();
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     die "Training set '$modelfile' is not in correct format?!? Expected \">structure\".\n"
+1.9          (riouxp   02-Feb-07):         unless $model[0] =~ m#^>structure#;
+1.9          (riouxp   02-Feb-07):     my $struct1 = $model[1];
+1.9          (riouxp   02-Feb-07):     my $struct2 = $model[2];
+1.9          (riouxp   02-Feb-07):     chomp $struct1;
+1.9          (riouxp   02-Feb-07):     chomp $struct2;
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     my %masked = map { $_ => 1 } @$erpinMaskNums;
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # We WILL need to adjust the "region" argument of erpin (see $region above).
+1.9          (riouxp   02-Feb-07):     # To do so, before we strip the model, let's find out where the region supplied
+1.9          (riouxp   02-Feb-07):     # by the user really is.
+1.9          (riouxp   02-Feb-07):     my $origRegLeftPos  = &FindElementPos($struct1,$struct2,$RegLeft);
+1.9          (riouxp   02-Feb-07):     my $origRegRightPos = &FindElementPos($struct1,$struct2,$RegRight);
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # Identify how many characters to strip on LEFT side
+1.9          (riouxp   02-Feb-07):     my $stripL = undef;
+1.9          (riouxp   02-Feb-07):     for (my $i = 0; $i < length($struct1);$i++) {
+1.9          (riouxp   02-Feb-07):         my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+1.9          (riouxp   02-Feb-07):         $el = int($el+0);
+1.9          (riouxp   02-Feb-07):         next unless $masked{$el};
+1.9          (riouxp   02-Feb-07):         $stripL = $i;
+1.9          (riouxp   02-Feb-07):         last;
+1.9          (riouxp   02-Feb-07):     }
+1.9          (riouxp   02-Feb-07):     die "Cannot find how many characters to strip on left side of structure?!?\n"
+1.9          (riouxp   02-Feb-07):         unless defined $stripL; # should never happen
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # Identify how many characters to strip on RIGHT side
+1.9          (riouxp   02-Feb-07):     my $stripR = undef;
+1.9          (riouxp   02-Feb-07):     for (my $i = 0; $i < length($struct1);$i++) {
+1.9          (riouxp   02-Feb-07):         my $el = substr($struct1,-($i+1),1) . substr($struct2,-($i+1),1);
+1.9          (riouxp   02-Feb-07):         $el = int($el+0);
+1.9          (riouxp   02-Feb-07):         next unless $masked{$el};
+1.9          (riouxp   02-Feb-07):         $stripR = $i;
+1.9          (riouxp   02-Feb-07):         last;
+1.9          (riouxp   02-Feb-07):     }
+1.9          (riouxp   02-Feb-07):     die "Cannot find how many characters to strip on right side of structure?!?\n"
+1.9          (riouxp   02-Feb-07):         unless defined $stripR; # should never happen
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # Allright, now dump a new version of the training set with leading
+1.9          (riouxp   02-Feb-07):     # and trailing characters stripped away.
+1.9          (riouxp   02-Feb-07):     my $outfh = new IO::File ">$newfile"
+1.9          (riouxp   02-Feb-07):         or die "Cannot write to new taining set file '$newfile': $!\n";
+1.9          (riouxp   02-Feb-07):     foreach my $line (@model) {
+1.9          (riouxp   02-Feb-07):         chomp $line;
+1.9          (riouxp   02-Feb-07):         if ($line !~ m#^>#) {
+1.9          (riouxp   02-Feb-07):             substr($line,-$stripR)=""  if $stripR;
+1.9          (riouxp   02-Feb-07):             substr($line,0,$stripL)="" if $stripL;
+1.9          (riouxp   02-Feb-07):         }
+1.9          (riouxp   02-Feb-07):         print $outfh $line,"\n";
+1.9          (riouxp   02-Feb-07):     }
+1.9          (riouxp   02-Feb-07):     $outfh->close();
+1.9          (riouxp   02-Feb-07): 
+1.11         (riouxp   07-Feb-07):     my $origStructLen = length($struct1); # remember original length
+1.11         (riouxp   07-Feb-07): 
+1.11         (riouxp   07-Feb-07):     # Construct stripped structure (and remember stripped elements)
+1.11         (riouxp   07-Feb-07):     my ($L_struct,$R_struct) = ("","");
+1.11         (riouxp   07-Feb-07):     if ($stripR) {
+1.11         (riouxp   07-Feb-07):         $R_struct = substr($struct1,-$stripR) . "\n" . substr($struct2,-$stripR);
+1.11         (riouxp   07-Feb-07):         substr($struct1,-$stripR)="";
+1.11         (riouxp   07-Feb-07):         substr($struct2,-$stripR)="";
+1.11         (riouxp   07-Feb-07):     }
+1.11         (riouxp   07-Feb-07):     if ($stripL) {
+1.11         (riouxp   07-Feb-07):         $L_struct = substr($struct1,0,$stripL) . "\n" . substr($struct2,0,$stripL);
+1.11         (riouxp   07-Feb-07):         substr($struct1,0,$stripL)="";
+1.11         (riouxp   07-Feb-07):         substr($struct2,0,$stripL)="";
+1.11         (riouxp   07-Feb-07):     }
+1.11         (riouxp   07-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # Recompute the 'region' for erpin, if necessary. First the easy
+1.9          (riouxp   02-Feb-07):     # case, the RIGHT side, which is always a + number.
+1.9          (riouxp   02-Feb-07):     if ($origRegRightPos >= $origStructLen - $stripR) { # must be >= not simply > !
+1.9          (riouxp   02-Feb-07):         $RegRight = substr($struct1,-1,1) . substr($struct2,-1,1); # last character of each
+1.9          (riouxp   02-Feb-07):         $RegRight = int($RegRight+0);
+1.9          (riouxp   02-Feb-07):     }
+1.11         (riouxp   07-Feb-07): 
+1.9          (riouxp   02-Feb-07):     # The left side is a little bit more complex, as we might need to
+1.11         (riouxp   07-Feb-07):     # supply a '-' sign to erpin.
+1.9          (riouxp   02-Feb-07):     if ($origRegLeftPos < $stripL) { # must be < and not <=.
+1.9          (riouxp   02-Feb-07):         $RegLeft = substr($struct1,0,1) . substr($struct2,0,1); # first character of each
+1.9          (riouxp   02-Feb-07):         $RegLeft = int($RegLeft+0);
+1.9          (riouxp   02-Feb-07):         # Scan to see if element has another component later on the struct
+1.9          (riouxp   02-Feb-07):         my ($foundOther,$foundSame) = (0,0);
+1.9          (riouxp   02-Feb-07):         for (my $i=1;$i < length($struct1);$i++) {
+1.9          (riouxp   02-Feb-07):             my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+1.9          (riouxp   02-Feb-07):             $el = int($el+0);
+1.9          (riouxp   02-Feb-07):             $foundOther = 1 if $el != $RegLeft;
+1.9          (riouxp   02-Feb-07):             $foundSame  = 1 if $foundOther && $el == $RegLeft;
+1.9          (riouxp   02-Feb-07):         }
+1.9          (riouxp   02-Feb-07):         $RegLeft = "-" . $RegLeft if $foundOther && $foundSame;
+1.9          (riouxp   02-Feb-07):     }
+1.9          (riouxp   02-Feb-07):     my $newregion = "$RegLeft,$RegRight";
+1.11         (riouxp   07-Feb-07):     return ($newregion,$L_struct,$R_struct);
+1.9          (riouxp   02-Feb-07): }
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07): # Returns the position of the structure where we can find
+1.9          (riouxp   02-Feb-07): # the leftmost char of $el or the rightmost char (depending
+1.9          (riouxp   02-Feb-07): # on whether or not $el is negative or positive).
+1.9          (riouxp   02-Feb-07): sub FindElementPos {
+1.21         (nbeck    04-Aug-09):     my ($struct1,$struct2,$element) = @_;
+1.21         (nbeck    04-Aug-09):     # Neg: we search from left to right; Pos: right to left.
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     my $searchL2R = $element < 0 ? 1 : 0;
+1.9          (riouxp   02-Feb-07):     $element = abs($element);
+1.9          (riouxp   02-Feb-07):     
+1.9          (riouxp   02-Feb-07):     my ($start,$stop,$dir) = (0,length($struct1),1);
+1.9          (riouxp   02-Feb-07):     ($start,$stop,$dir) = ($stop-1,-1,-1) if ! $searchL2R; # We search from the RIGHT to LEFT.
+1.9          (riouxp   02-Feb-07): 
+1.9          (riouxp   02-Feb-07):     for (my $i=$start;$i != $stop; $i += $dir) { # this loop handle both directions
+1.9          (riouxp   02-Feb-07):         my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+1.9          (riouxp   02-Feb-07):         $el = int($el+0);
+1.9          (riouxp   02-Feb-07):         return $i if $el == $element;
+1.9          (riouxp   02-Feb-07):     }
+1.9          (riouxp   02-Feb-07):     die "Cannot find element #$element in struct:\n$struct1\n$struct2\n";
+1.9          (riouxp   02-Feb-07): }

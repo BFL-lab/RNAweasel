@@ -1,0 +1,166 @@
+1.1          (dto      15-Apr-05): #!/usr/bin/perl
+1.1          (dto      15-Apr-05): #############################################################################
+1.1          (dto      15-Apr-05): #                               mf2fasta                                    #
+1.1          (dto      15-Apr-05): my $VERSION=                     "1.0"                                     ;#
+1.1          (dto      15-Apr-05): #                                                                           #
+1.1          (dto      15-Apr-05): #                        Copyright (C) 2004 OGMP                            #
+1.1          (dto      15-Apr-05): #                 (Organelle Genome Megasequencing Program),                #
+1.1          (dto      15-Apr-05): #                        Departement de Biochimie,                          #
+1.1          (dto      15-Apr-05): #                         Universite de Montreal,                           #
+1.1          (dto      15-Apr-05): #                    C.P. 6128, succursale Centre-ville,                    #
+1.1          (dto      15-Apr-05): #                     Montreal, Quebec, Canada, H3C 2J7                     #
+1.1          (dto      15-Apr-05): #                                                                           #
+1.1          (dto      15-Apr-05): #                      Programming: David To                                #
+1.1          (dto      15-Apr-05): #               Project management: Franz Lang                              #
+1.1          (dto      15-Apr-05): #               E-Mail information: ogmp@bch.umontreal.ca                   #
+1.1          (dto      15-Apr-05): #                                                                           #
+1.1          (dto      15-Apr-05): #     This software is distributed under the GNU GENERAL PUBLIC LICENSE, as #
+1.1          (dto      15-Apr-05): # published by the Free Software Foundation. A copy of version 2 of this    #
+1.1          (dto      15-Apr-05): # license should be included in a file called COPYING. If not, write to the #
+1.1          (dto      15-Apr-05): # Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.   #
+1.1          (dto      15-Apr-05): #############################################################################
+1.1          (dto      15-Apr-05): # This script formats a fasta file and sets the line lenth to be $MAXLINELENGTH
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): use File::Basename;
+1.1          (dto      15-Apr-05): use Getopt::Std;
+1.1          (dto      15-Apr-05): #use warnings;
+1.1          (dto      15-Apr-05): use strict;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): ################################
+1.1          (dto      15-Apr-05): # Setting up default variables #
+1.1          (dto      15-Apr-05): ################################
+1.1          (dto      15-Apr-05): my $DEFAULTLINELENGTH = 60;
+1.1          (dto      15-Apr-05): my $TRUE              = 1;
+1.1          (dto      15-Apr-05): my $FALSE             = 0;
+1.1          (dto      15-Apr-05): my $lineLength        = $DEFAULTLINELENGTH;
+1.1          (dto      15-Apr-05): my $useNumbers        = $FALSE;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): ###################################
+1.1          (dto      15-Apr-05): # Redirecting STDERR to /dev/null #
+1.1          (dto      15-Apr-05): ###################################
+1.1          (dto      15-Apr-05): $| = 1;
+1.1          (dto      15-Apr-05): open(STDERR, ">/dev/null");
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): ################################################
+1.1          (dto      15-Apr-05): # Get the options passed at the command prompt #
+1.1          (dto      15-Apr-05): ################################################
+1.1          (dto      15-Apr-05): my %options=();
+1.1          (dto      15-Apr-05): getopts("c:no:h", \%options);
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): #####################################################
+1.1          (dto      15-Apr-05): # Check the default argument (the input fasta file) #
+1.1          (dto      15-Apr-05): #####################################################
+1.1          (dto      15-Apr-05): if(@ARGV != 1)
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   my $len = @ARGV;
+1.1          (dto      15-Apr-05):   Usage();
+1.1          (dto      15-Apr-05):   die;
+1.1          (dto      15-Apr-05): }
+1.2          (dto      02-May-05): # All arguments are valid. Log program use in logfile
+1.2          (dto      02-May-05): my ($LoG) = ($0 =~ m!([^/]+)$!);
+1.2          (dto      02-May-05): my $USER = $ENV{'USER'};
+1.2          (dto      02-May-05): system("echo `date +%y-%m-%d,%H:%M:%S` $USER $LoG >>/share/supported/apps/ogmp/log/ogmplog");
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): # Decide on the output location
+1.1          (dto      15-Apr-05): if(defined($options{c}))
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   $lineLength = $options{c};
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): if(defined($options{n}))
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   $useNumbers = $TRUE;
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): if(defined($options{h}))
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   Usage();
+1.1          (dto      15-Apr-05):   die;
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): if(defined($options{o}))
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   open (STDOUT, ">$options{o}") or die "Could not create output file\n";
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): # Open the inputfile
+1.1          (dto      15-Apr-05): my $inputFile = shift @ARGV;
+1.1          (dto      15-Apr-05): open (IN, $inputFile) or die "Could not find the input file: $inputFile\n";
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): my $remainder = 0;
+1.1          (dto      15-Apr-05): my $position = 0;
+1.1          (dto      15-Apr-05): my $key;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): my $line;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): my @sequences;
+1.1          (dto      15-Apr-05): my @headers;
+1.1          (dto      15-Apr-05): my $counter = -1;
+1.1          (dto      15-Apr-05): my $printLen = 6;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): while($line = <IN>)
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   chomp($line);
+1.1          (dto      15-Apr-05):   if($line =~ /^;.*/ or $line =~ /^$/)
+1.1          (dto      15-Apr-05):   {
+1.1          (dto      15-Apr-05):     next;
+1.1          (dto      15-Apr-05):   }
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05):   if($line =~ s/\s*(>.*)/$1/g)
+1.1          (dto      15-Apr-05):   {
+1.1          (dto      15-Apr-05):     push(@headers, $line);
+1.1          (dto      15-Apr-05):     $counter++;
+1.1          (dto      15-Apr-05):   }
+1.1          (dto      15-Apr-05):   else
+1.1          (dto      15-Apr-05):   {
+1.6          (riouxp   03-Apr-07):     $line =~ tr/a-zA-Z\000-\100\133-\140\173-\277/A-ZA-Z/d;
+1.1          (dto      15-Apr-05):     $sequences[$counter] .= $line;
+1.1          (dto      15-Apr-05):   }
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): for(my $i=0; $i<=$counter; $i++)
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   print STDOUT $headers[$i], "\n";	
+1.1          (dto      15-Apr-05):   $remainder = length($sequences[$i]);
+1.1          (dto      15-Apr-05):   while($remainder>0)
+1.1          (dto      15-Apr-05):   {
+1.1          (dto      15-Apr-05):     if($remainder < $lineLength)
+1.1          (dto      15-Apr-05):     {
+1.1          (dto      15-Apr-05):       $printLen = $remainder;
+1.1          (dto      15-Apr-05):     }
+1.1          (dto      15-Apr-05):     else
+1.1          (dto      15-Apr-05):     {
+1.1          (dto      15-Apr-05):       $printLen = $lineLength;
+1.1          (dto      15-Apr-05):     }	
+1.1          (dto      15-Apr-05):     my $printLine = substr($sequences[$i], $position, $printLen);
+1.1          (dto      15-Apr-05):     if ($useNumbers)
+1.1          (dto      15-Apr-05):     {
+1.1          (dto      15-Apr-05):       print sprintf("%7i %s\n", ($position + 1), $printLine); 
+1.1          (dto      15-Apr-05):     }
+1.1          (dto      15-Apr-05):     else
+1.1          (dto      15-Apr-05):     {
+1.1          (dto      15-Apr-05):       print STDOUT $printLine, "\n";
+1.1          (dto      15-Apr-05):     }
+1.1          (dto      15-Apr-05):     $position += $printLen;
+1.1          (dto      15-Apr-05):     $remainder -= $printLen;
+1.1          (dto      15-Apr-05):   }
+1.1          (dto      15-Apr-05):   $position = 0;
+1.1          (dto      15-Apr-05):   $remainder = 0;
+1.1          (dto      15-Apr-05):   print STDOUT "\n";
+1.1          (dto      15-Apr-05): }
+1.1          (dto      15-Apr-05): close IN;
+1.1          (dto      15-Apr-05): close STDOUT;
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): sub Usage
+1.1          (dto      15-Apr-05): {
+1.1          (dto      15-Apr-05):   my $base = basename($0);
+1.4          (dto      14-Jul-05):   print "\nUsage: $base [-n -c <num char/line> -o <outfile> -h] masterfile\n";
+1.1          (dto      15-Apr-05):   print "All arguments are optional.\n";
+1.1          (dto      15-Apr-05):   print "
+1.1          (dto      15-Apr-05):  -n
+1.1          (dto      15-Apr-05):     Print sequence position on each line
+1.1          (dto      15-Apr-05):  -c integer
+1.1          (dto      15-Apr-05):     Number of characters per line
+1.1          (dto      15-Apr-05):  -o filename
+1.1          (dto      15-Apr-05):     Send the output to file (default standard out)
+1.1          (dto      15-Apr-05):  -h 
+1.1          (dto      15-Apr-05):     Display the usage\n";
+1.1          (dto      15-Apr-05): }
+1.3          (dto      07-Jul-05): 
+1.3          (dto      07-Jul-05): exit(1);

@@ -1,0 +1,37 @@
+
+RCS file: /share/CVS/unix-utils/mf2fasta/mf2fasta,v
+Working file: mf2fasta
+head: 1.6
+branch:
+locks: strict
+access list:
+symbolic names:
+keyword substitution: kv
+total revisions: 6;	selected revisions: 6
+description:
+----------------------------
+revision 1.6
+date: 2007-04-03 20:57:34 +0000;  author: riouxp;  state: Exp;  lines: +1 -4;
+Improved character cleanup in sequence.
+----------------------------
+revision 1.5
+date: 2007-04-02 18:25:19 +0000;  author: riouxp;  state: Exp;  lines: +1 -1;
+Fixed bug where sequence was not converted to uppercase.
+----------------------------
+revision 1.4
+date: 2005-07-14 15:35:14 +0000;  author: dto;  state: Exp;  lines: +1 -3;
+Removed debugging code
+Fixed usage - replaced fastafile with masterfile
+----------------------------
+revision 1.3
+date: 2005-07-07 17:36:22 +0000;  author: dto;  state: Exp;  lines: +2 -0;
+Added in exit(1) to tell a successful return value
+----------------------------
+revision 1.2
+date: 2005-05-02 17:20:32 +0000;  author: dto;  state: Exp;  lines: +4 -0;
+Added ogmp logging
+----------------------------
+revision 1.1
+date: 2005-04-15 01:01:12 +0000;  author: dto;  state: Exp;
+Converts a masterfile to a fasta file
+=============================================================================

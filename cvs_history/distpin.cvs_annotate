@@ -1,0 +1,631 @@
+1.1          (dto      30-Nov-05): #!/usr/bin/perl
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): ##############################################################################
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): #                                 distpin
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): # DESCRIPTION:
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): # Known issues: 
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): ##############################################################################
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): ##############################################################################
+1.1          (dto      30-Nov-05): #                                                                            #
+1.1          (dto      30-Nov-05): #                       CONFIDENTIAL & PROPRIETARY                           #
+1.1          (dto      30-Nov-05): #       Nothing herein is to be disclosed in any way without the prior       #
+1.1          (dto      30-Nov-05): #                  express written permission of David To                    #
+1.1          (dto      30-Nov-05): #                                                                            #
+1.1          (dto      30-Nov-05): #               Copyright 2004 David To, All rights reserved.                #
+1.1          (dto      30-Nov-05): #                                                                            #
+1.1          (dto      30-Nov-05): ##############################################################################
+1.18         (nbeck    20-Aug-09): #    $Id: distpin,v 1.17 2007/02/01 19:25:06 riouxp Exp $
+1.2          (dto      30-Nov-05): #
+1.2          (dto      30-Nov-05): #    $Log: distpin,v $
+1.18         (nbeck    20-Aug-09): #    Revision 1.17  2007/02/01 19:25:06  riouxp
+1.18         (nbeck    20-Aug-09): #    Made sure sequence data fed to puzzle are in UPPERCASE, otherwise
+1.18         (nbeck    20-Aug-09): #    puzzle crashes.
+1.18         (nbeck    20-Aug-09): #
+1.17         (riouxp   01-Feb-07): #    Revision 1.16  2007/01/29 20:31:37  riouxp
+1.17         (riouxp   01-Feb-07): #    Esthetic changes to progression messages, as requested by Franz.
+1.17         (riouxp   01-Feb-07): #
+1.16         (riouxp   29-Jan-07): #    Revision 1.15  2007/01/29 19:46:59  riouxp
+1.16         (riouxp   29-Jan-07): #    Fixed check.
+1.16         (riouxp   29-Jan-07): #
+1.15         (riouxp   29-Jan-07): #    Revision 1.14  2007/01/29 19:43:55  riouxp
+1.15         (riouxp   29-Jan-07): #    Added checks for proper input model file.
+1.15         (riouxp   29-Jan-07): #
+1.14         (riouxp   29-Jan-07): #    Revision 1.13  2007/01/29 19:38:02  riouxp
+1.14         (riouxp   29-Jan-07): #    Added kludge to allow handling properly model files that
+1.14         (riouxp   29-Jan-07): #    have multiple entries with the same name.
+1.14         (riouxp   29-Jan-07): #
+1.13         (riouxp   29-Jan-07): #    Revision 1.12  2006/02/25 00:34:57  dto
+1.13         (riouxp   29-Jan-07): #    Removed commented out code
+1.13         (riouxp   29-Jan-07): #
+1.12         (dto      25-Feb-06): #    Revision 1.11  2006/02/01 21:05:37  dto
+1.12         (dto      25-Feb-06): #    Added debugging
+1.12         (dto      25-Feb-06): #
+1.11         (dto      01-Feb-06): #    Revision 1.10  2006/01/27 01:40:29  dto
+1.11         (dto      01-Feb-06): #    Fixed Usage
+1.11         (dto      01-Feb-06): #    Move END code
+1.11         (dto      01-Feb-06): #    Print out sequences that are removed.
+1.11         (dto      01-Feb-06): #
+1.10         (dto      27-Jan-06): #    Revision 1.9  2005/12/02 18:41:31  dto
+1.10         (dto      27-Jan-06): #    Fixed banner message
+1.10         (dto      27-Jan-06): #
+1.9          (dto      02-Dec-05): #    Revision 1.8  2005/12/02 18:41:00  dto
+1.9          (dto      02-Dec-05): #    Fixed model stuff
+1.9          (dto      02-Dec-05): #    Fixed version number
+1.9          (dto      02-Dec-05): #
+1.8          (dto      02-Dec-05): #    Revision 1.7  2005/12/02 18:14:52  dto
+1.8          (dto      02-Dec-05): #    Changed method for removing sequences from model - will only remove a % of sequences
+1.8          (dto      02-Dec-05): #    given the cut off, rather than a all sequences repeated in the % of pairs
+1.8          (dto      02-Dec-05): #
+1.7          (dto      02-Dec-05): #    Revision 1.6  2005/12/02 15:33:28  dto
+1.7          (dto      02-Dec-05): #    Fixed progress bar
+1.7          (dto      02-Dec-05): #
+1.6          (dto      02-Dec-05): #    Revision 1.5  2005/12/02 15:32:15  dto
+1.6          (dto      02-Dec-05): #    Added checking for existance of input file
+1.6          (dto      02-Dec-05): #    Fixed bug with translation table
+1.6          (dto      02-Dec-05): #    Fixed but with usage
+1.6          (dto      02-Dec-05): #
+1.5          (dto      02-Dec-05): #    Revision 1.4  2005/12/02 15:01:29  dto
+1.5          (dto      02-Dec-05): #    Added sleep of 1 second before puzzle
+1.5          (dto      02-Dec-05): #    Added translation table output
+1.5          (dto      02-Dec-05): #    Added remove repeated sequence only function
+1.5          (dto      02-Dec-05): #    Added Puzzle file saving function
+1.5          (dto      02-Dec-05): #
+1.4          (dto      02-Dec-05): #    Revision 1.3  2005/12/01 21:52:58  dto
+1.4          (dto      02-Dec-05): #    Fixed parameters of Puzzle
+1.4          (dto      02-Dec-05): #
+1.3          (dto      01-Dec-05): #    Revision 1.2  2005/11/30 22:10:40  dto
+1.3          (dto      01-Dec-05): #    Added mask values to Usage
+1.3          (dto      01-Dec-05): #
+1.2          (dto      30-Nov-05): #    Revision 1.1  2005/11/30 22:03:17  dto
+1.2          (dto      30-Nov-05): #    Added programme to filter eprin models based on distances
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): #
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): require 5.00;
+1.1          (dto      30-Nov-05): use strict;
+1.1          (dto      30-Nov-05): use warnings;
+1.1          (dto      30-Nov-05): use vars qw( $VERSION $RCS_VERSION );
+1.1          (dto      30-Nov-05): use Cwd;
+1.1          (dto      30-Nov-05): use File::Basename;
+1.1          (dto      30-Nov-05): use File::Copy;
+1.1          (dto      30-Nov-05): use File::Path;
+1.1          (dto      30-Nov-05): use Getopt::Std;
+1.1          (dto      30-Nov-05): use IO::File;
+1.1          (dto      30-Nov-05): use Socket;
+1.18         (nbeck    20-Aug-09): use POSIX qw{strftime};
+1.18         (nbeck    20-Aug-09): use Term::ANSIColor qw(:constants);
+1.18         (nbeck    20-Aug-09): $Term::ANSIColor::AUTORESET = 1;
+1.18         (nbeck    20-Aug-09): 
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): my $TRUE   = 1;
+1.1          (dto      30-Nov-05): my $FALSE  = 0;
+1.1          (dto      30-Nov-05): my $PID    = $$;
+1.3          (dto      01-Dec-05): my $TMPDIR = "/tmp";
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Default umask
+1.1          (dto      30-Nov-05): umask 027;
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Programme's name and version number.
+1.18         (nbeck    20-Aug-09): $RCS_VERSION='$Id: distpin,v 1.17 2007/02/01 19:25:06 riouxp Exp $';
+1.1          (dto      30-Nov-05): ($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+1.1          (dto      30-Nov-05): my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Get login name.
+1.1          (dto      30-Nov-05): my $USER=getpwuid($<) or getlogin or die "Can't find USER from environment!\n";
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Catch Interupt signals
+1.1          (dto      30-Nov-05): $SIG{'INT'}  = \&SigCleanup;
+1.1          (dto      30-Nov-05): $SIG{'TERM'} = \&SigCleanup;
+1.1          (dto      30-Nov-05): $SIG{'HUP'}  = \&SigCleanup;
+1.1          (dto      30-Nov-05): $SIG{'QUIT'} = \&SigCleanup;
+1.1          (dto      30-Nov-05): $SIG{'PIPE'} = \&SigCleanup;
+1.1          (dto      30-Nov-05): $SIG{'ALRM'} = \&SigCleanup;
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Redirecting STDERR to /dev/null
+1.1          (dto      30-Nov-05): $| = 1;
+1.1          (dto      30-Nov-05): open(STDERR, ">/dev/null");
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Define variables
+1.1          (dto      30-Nov-05): my $GBLOCKS       = "/share/supported/apps/gblocks/bin/gblocks";
+1.1          (dto      30-Nov-05): my $ALI2PUZ       = "/share/supported/apps/ogmp/bin/ali2puz";
+1.1          (dto      30-Nov-05): my $PUZZLE        = "/share/supported/apps/tree-puzzle/bin/puzzle";
+1.18         (nbeck    20-Aug-09): my $DNADIST       = "/share/supported/bin/dnadist";
+1.18         (nbeck    20-Aug-09): my $lowerCutoff   = 0;
+1.1          (dto      30-Nov-05): my $INPUTMODEL;
+1.1          (dto      30-Nov-05): my $OUTPUTMODEL;
+1.18         (nbeck    20-Aug-09): my $SAVEPUZZLEFILEFLAG    = $FALSE;
+1.4          (dto      02-Dec-05): my $JUSTREMOVEREPEATSFLAG = $FALSE;
+1.4          (dto      02-Dec-05): my $PUZZLEFILE;
+1.18         (nbeck    20-Aug-09): my $TRANSLATIONTABLEFLAG  = $FALSE;
+1.4          (dto      02-Dec-05): my $TRANSLATIONTABLE;
+1.1          (dto      30-Nov-05): my @model;
+1.1          (dto      30-Nov-05): my @strippedModel;
+1.1          (dto      30-Nov-05): my %headerLookup  = ();
+1.1          (dto      30-Nov-05): my $headerCounter = 1;
+1.1          (dto      30-Nov-05): my $structureLine1;
+1.1          (dto      30-Nov-05): my $structureLine2;
+1.4          (dto      02-Dec-05): my %removeSeq = ();
+1.4          (dto      02-Dec-05): my %foundSeq = ();
+1.1          (dto      30-Nov-05): # Get the options passed at the command prompt
+1.1          (dto      30-Nov-05): my %options=();
+1.4          (dto      02-Dec-05): getopts("hi:l:o:p:rt:", \%options);
+1.1          (dto      30-Nov-05): if(defined($options{h})) {
+1.1          (dto      30-Nov-05):   Usage();
+1.1          (dto      30-Nov-05):   exit(1);
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): if(defined($options{i})) {
+1.1          (dto      30-Nov-05):   $INPUTMODEL=$options{i};
+1.5          (dto      02-Dec-05):   if(!-e $INPUTMODEL) {
+1.18         (nbeck    20-Aug-09):     print RED "Your input file \"$INPUTMODEL\" does not exist!\n";
+1.5          (dto      02-Dec-05):     die();
+1.5          (dto      02-Dec-05):   }
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): else {
+1.1          (dto      30-Nov-05):   print "You did not supply an input file name\n";
+1.1          (dto      30-Nov-05):   die();
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): if(defined($options{o})) {
+1.1          (dto      30-Nov-05):   $OUTPUTMODEL=$options{o};
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): else {
+1.1          (dto      30-Nov-05):   print "You did not supply an output file name\n";
+1.1          (dto      30-Nov-05):   die();
+1.1          (dto      30-Nov-05): }
+1.7          (dto      02-Dec-05): if(defined($options{r})) {
+1.7          (dto      02-Dec-05):   $JUSTREMOVEREPEATSFLAG = $TRUE;
+1.7          (dto      02-Dec-05): }
+1.1          (dto      30-Nov-05): if(defined($options{l})) {
+1.1          (dto      30-Nov-05):   $lowerCutoff=$options{l};
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.4          (dto      02-Dec-05): if(defined($options{p})) {
+1.4          (dto      02-Dec-05):   $SAVEPUZZLEFILEFLAG = $TRUE;
+1.4          (dto      02-Dec-05):   $PUZZLEFILE         = $options{p};
+1.4          (dto      02-Dec-05): }
+1.4          (dto      02-Dec-05): 
+1.4          (dto      02-Dec-05): if(defined($options{t})) {
+1.4          (dto      02-Dec-05):   $TRANSLATIONTABLEFLAG = $TRUE;
+1.4          (dto      02-Dec-05):   $TRANSLATIONTABLE     = $options{t};
+1.4          (dto      02-Dec-05): }
+1.4          (dto      02-Dec-05): 
+1.4          (dto      02-Dec-05): 
+1.1          (dto      30-Nov-05): if(@ARGV < 1) {
+1.1          (dto      30-Nov-05):   Usage();
+1.1          (dto      30-Nov-05):   print("You have not supplied the correct number of arguments.\n");
+1.1          (dto      30-Nov-05):   die;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): # Grab arguments from command line
+1.18         (nbeck    20-Aug-09): unless (-d "$TMPDIR/distpin${PID}") { mkdir("$TMPDIR/distpin${PID}",0755); }
+1.18         (nbeck    20-Aug-09): my @maskNumbers   = @ARGV;
+1.18         (nbeck    20-Aug-09): my $BASE          = basename($INPUTMODEL);
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): my $GBLOCKSIN     = "$TMPDIR/distpin${PID}/gblocksin";
+1.18         (nbeck    20-Aug-09): my $GBLOCKSOUT    = "$TMPDIR/distpin${PID}/$GBLOCKSIN.-gb";
+1.18         (nbeck    20-Aug-09): my $GBLOCKSHTML   = "$TMPDIR/distpin${PID}/$GBLOCKSOUT.htm";
+1.18         (nbeck    20-Aug-09): my $ALI2PUZIN     = "$TMPDIR/distpin${PID}/${PID}.ali";
+1.18         (nbeck    20-Aug-09): my $ALI2PUZOUT    = "$TMPDIR/distpin${PID}/${PID}.puz";
+1.18         (nbeck    20-Aug-09): my $DNADISTANCE   = "$TMPDIR/distpin${PID}/outfile";
+1.18         (nbeck    20-Aug-09): my $INFILE        = "$TMPDIR/distpin${PID}/infile";
+1.18         (nbeck    20-Aug-09): my $DNACOMMAND    = "$TMPDIR/distpin${PID}/dnadistcommand";
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): ##################################
+1.1          (dto      30-Nov-05): #   M A I N   P R O G R A M M E  #
+1.1          (dto      30-Nov-05): ##################################
+1.18         (nbeck    20-Aug-09): print BOLD "      #######################################\n"  ;
+1.18         (nbeck    20-Aug-09): print BOLD "          Distance Erpin Version $VERSION   \n"      ;
+1.18         (nbeck    20-Aug-09): print BOLD "      #######################################\n\n";
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): print BLUE "1. Removing non-selected masked sequences:......\n";
+1.1          (dto      30-Nov-05): # Input erpin model file
+1.1          (dto      30-Nov-05): @model = OpenFile($INPUTMODEL);
+1.1          (dto      30-Nov-05): 
+1.14         (riouxp   29-Jan-07): die "This file '$INPUTMODEL' doesn't seem to be a Erpin model file?!?\n"
+1.15         (riouxp   29-Jan-07):     unless @model && $model[0] =~ m#^>structure#;
+1.13         (riouxp   29-Jan-07): 
+1.1          (dto      30-Nov-05): # 2. Remove the structure from the file (assume structure is in the first 3 lines)
+1.1          (dto      30-Nov-05): @model = @model[1..(@model-1)];
+1.1          (dto      30-Nov-05): chomp($structureLine1 = shift(@model));
+1.1          (dto      30-Nov-05): chomp($structureLine2 = shift(@model));
+1.14         (riouxp   29-Jan-07): 
+1.14         (riouxp   29-Jan-07): # KLUDGE because this code does not handle well model files with duplicate headers.
+1.14         (riouxp   29-Jan-07): # We basically add some special characters to a header to make them all distinct.
+1.14         (riouxp   29-Jan-07): &AddDifferentiatingHeaders(\@model);
+1.14         (riouxp   29-Jan-07): 
+1.1          (dto      30-Nov-05): my %sequences;
+1.1          (dto      30-Nov-05): my $title = "";
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): foreach my $line (@model) {
+1.1          (dto      30-Nov-05):   if($line =~ m/^>.*/) {
+1.1          (dto      30-Nov-05):     push @strippedModel, $line;
+1.1          (dto      30-Nov-05):     $title = $line;
+1.1          (dto      30-Nov-05):     next;
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05):   $sequences{$title} = $line;
+1.1          (dto      30-Nov-05):   my $tmpSeq = "";
+1.1          (dto      30-Nov-05):   for(my $i=0;$i<length($structureLine1);$i++) {
+1.1          (dto      30-Nov-05):     my $maskvalue = getStructureValue(substr($structureLine1, $i, 1), substr($structureLine2, $i, 1));
+1.1          (dto      30-Nov-05):     foreach my $selectedValue (@maskNumbers) {
+1.1          (dto      30-Nov-05):       if($maskvalue == $selectedValue) {
+1.1          (dto      30-Nov-05):         $tmpSeq .= substr($line, $i, 1);
+1.1          (dto      30-Nov-05):         last;
+1.1          (dto      30-Nov-05):       }
+1.1          (dto      30-Nov-05):     }
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05):   $tmpSeq .= "\n";
+1.1          (dto      30-Nov-05):   push @strippedModel, $tmpSeq;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.18         (nbeck    20-Aug-09): print BLUE "2. Removing repeated sequences:.................\n";
+1.1          (dto      30-Nov-05): 
+1.10         (dto      27-Jan-06): my $removedSeqCount = 0;
+1.10         (dto      27-Jan-06): my $totalSeq = scalar(@strippedModel)/2;
+1.1          (dto      30-Nov-05): # Removing Repeated sequences
+1.11         (dto      01-Feb-06): my @removeList;
+1.1          (dto      30-Nov-05): for(my $i=0;$i<@strippedModel;$i++) {
+1.1          (dto      30-Nov-05):   for(my $j=0;$j<@strippedModel;$j++) {
+1.18         (nbeck    20-Aug-09):     next if ($i==$j);
+1.18         (nbeck    20-Aug-09):     next if (($strippedModel[$i] =~ m/^>.*/) or ($strippedModel[$j] =~ m/^>.*/));
+1.18         (nbeck    20-Aug-09):     next if ($strippedModel[$i] ne $strippedModel[$j]);
+1.18         (nbeck    20-Aug-09):     $removedSeqCount++;
+1.18         (nbeck    20-Aug-09):     my $header1Pos = $i - 1;
+1.18         (nbeck    20-Aug-09):     my $header2Pos = $j - 1;
+1.18         (nbeck    20-Aug-09):     push @removeList, $strippedModel[$header2Pos];
+1.18         (nbeck    20-Aug-09):     splice(@strippedModel, $j--, 1);
+1.18         (nbeck    20-Aug-09):     splice(@strippedModel, $j, 1);
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.10         (dto      27-Jan-06): if($removedSeqCount == 0) {
+1.18         (nbeck    20-Aug-09):   print YELLOW "There were no repeated sequences!\n";
+1.10         (dto      27-Jan-06): }
+1.10         (dto      27-Jan-06): else {
+1.18         (nbeck    20-Aug-09):   print MAGENTA "Removed $removedSeqCount repeated sequences out of $totalSeq\n";
+1.18         (nbeck    20-Aug-09):   print MAGENTA "These sequences were removed:\n";
+1.18         (nbeck    20-Aug-09):   foreach my $remove (@removeList) { print MAGENTA "$remove"};
+1.18         (nbeck    20-Aug-09): }
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): 
+1.1          (dto      30-Nov-05): for(my $i=0;$i<@strippedModel;$i++) {
+1.1          (dto      30-Nov-05):   if($model[$i] =~ m/^>.*/) { # This is a header line
+1.1          (dto      30-Nov-05):     my $newHeader = sprintf(">%010d\n", $headerCounter);
+1.1          (dto      30-Nov-05):     $headerLookup{$newHeader} = $strippedModel[$i];
+1.1          (dto      30-Nov-05):     $strippedModel[$i] = $newHeader;
+1.1          (dto      30-Nov-05):     $headerCounter++;
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.4          (dto      02-Dec-05): if($TRANSLATIONTABLEFLAG) {
+1.16         (riouxp   29-Jan-07):   open(TT, ">$TRANSLATIONTABLE") or die "Could not create translation table file\n";
+1.4          (dto      02-Dec-05):   foreach my $key (sort keys %headerLookup) {
+1.5          (dto      02-Dec-05):     print TT $key . ": " . $headerLookup{$key} . "\n";
+1.4          (dto      02-Dec-05):   }
+1.5          (dto      02-Dec-05):   close(TT);
+1.4          (dto      02-Dec-05): }
+1.18         (nbeck    20-Aug-09): 
+1.4          (dto      02-Dec-05): if(!$JUSTREMOVEREPEATSFLAG) {
+1.4          (dto      02-Dec-05):   # Make a new fasta file for next stage.
+1.4          (dto      02-Dec-05):   if(SaveFile($GBLOCKSIN, @strippedModel)) {
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   else {
+1.4          (dto      02-Dec-05):     print "Fail...\n";
+1.16         (riouxp   29-Jan-07):     die "Unable to create new training set\n";
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   # Make sure the input is fasta, and the output is fasta
+1.4          (dto      02-Dec-05):   # Open the output file from Gblocks
+1.18         (nbeck    20-Aug-09):   print BLUE "3. Formatting sequences for dnadist:..........................\n";
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   my @gblocks = OpenFile($GBLOCKSIN);
+1.4          (dto      02-Dec-05):   my @gblocksOut;
+1.4          (dto      02-Dec-05):   push @gblocksOut, "#\n#";
+1.4          (dto      02-Dec-05):   for(my $i=0;$i<@gblocks;$i++) {
+1.4          (dto      02-Dec-05):     if($gblocks[$i] =~ m/^>.*/) {
+1.4          (dto      02-Dec-05):       push @gblocksOut, "\n";
+1.4          (dto      02-Dec-05):       push @gblocksOut, $gblocks[$i];
+1.4          (dto      02-Dec-05):     }
+1.4          (dto      02-Dec-05):     else {
+1.4          (dto      02-Dec-05):       chomp($gblocks[$i]);
+1.4          (dto      02-Dec-05):       $gblocks[$i] =~ s/ //g;
+1.17         (riouxp   01-Feb-07):       push @gblocksOut, uc($gblocks[$i]);
+1.4          (dto      02-Dec-05):     }
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   push @gblocksOut, "\n";
+1.5          (dto      02-Dec-05):   my $gblocksSize = @gblocksOut;
+1.5          (dto      02-Dec-05):   if($gblocksSize <= 2) {
+1.5          (dto      02-Dec-05):     print "\n\nYour data file for ali2puz is empty\n";
+1.5          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   if(SaveFile($ALI2PUZIN, @gblocksOut)) {
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   else {
+1.4          (dto      02-Dec-05):     print "Fail...\n";
+1.4          (dto      02-Dec-05):     die "Unable to create new Puzzle file\n";
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   # use ali2puz to convert the file to puzzle format
+1.4          (dto      02-Dec-05):   if(!system("$ALI2PUZ $ALI2PUZIN $ALI2PUZOUT 2>1& > /dev/null")) {
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   else {
+1.4          (dto      02-Dec-05):     print "Fail...\n";
+1.4          (dto      02-Dec-05):     die "Unable to run Ali2Puzzle\n";
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   
+1.18         (nbeck    20-Aug-09):   sleep 1 while ( !(-e $ALI2PUZOUT) );
+1.18         (nbeck    20-Aug-09):   
+1.18         (nbeck    20-Aug-09):   my @Ali2puz = OpenFile($ALI2PUZOUT);
+1.18         (nbeck    20-Aug-09):   open(INFILE, ">$INFILE") or die "Could not make $INFILE\n";
+1.18         (nbeck    20-Aug-09):   foreach my $line (@Ali2puz) {
+1.18         (nbeck    20-Aug-09):     print INFILE $line;
+1.18         (nbeck    20-Aug-09):   }
+1.18         (nbeck    20-Aug-09):   close(INFILE);
+1.18         (nbeck    20-Aug-09):   
+1.4          (dto      02-Dec-05):   # Run Puzzle
+1.18         (nbeck    20-Aug-09):   print BLUE "4. Running dnadist:..............................\n";
+1.18         (nbeck    20-Aug-09):   
+1.18         (nbeck    20-Aug-09):   my $CURRENTDIR = getcwd();
+1.18         (nbeck    20-Aug-09):   chdir "$TMPDIR/distpin${PID}";
+1.18         (nbeck    20-Aug-09):   open(DNACOMMAND, ">$DNACOMMAND") or die "Could not make command file for dnadist\n";
+1.18         (nbeck    20-Aug-09):   print DNACOMMAND "D\nD\nG\nY\n";
+1.18         (nbeck    20-Aug-09):   close($DNACOMMAND);
+1.18         (nbeck    20-Aug-09):   
+1.18         (nbeck    20-Aug-09):   if(!system("$DNADIST < $DNACOMMAND > /dev/null")) {
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   else {
+1.18         (nbeck    20-Aug-09):     print RED "Fail...\n";
+1.18         (nbeck    20-Aug-09):     die "Unable to run dnadist\n";
+1.4          (dto      02-Dec-05):   }
+1.18         (nbeck    20-Aug-09):   chdir "$CURRENTDIR";
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   # Open the distance table
+1.18         (nbeck    20-Aug-09):   print BLUE "5. Opening Distance table.......................\n";
+1.4          (dto      02-Dec-05):   
+1.18         (nbeck    20-Aug-09):   my @distanceFile = OpenFile($DNADISTANCE);
+1.4          (dto      02-Dec-05):   my $distanceTableRef;
+1.4          (dto      02-Dec-05):   my %distanceTable;
+1.4          (dto      02-Dec-05):   if(($distanceTableRef = ReadDistanceTable(@distanceFile))) {
+1.4          (dto      02-Dec-05):     %distanceTable = %$distanceTableRef;
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05):   else {
+1.4          (dto      02-Dec-05):     print "Fail...\n";
+1.4          (dto      02-Dec-05):     die "Unable to run read distance table\n";
+1.4          (dto      02-Dec-05):   }
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   # Make a list of sequences to remove
+1.18         (nbeck    20-Aug-09):   my $combi         = MakeCombination(\%distanceTable);
+1.18         (nbeck    20-Aug-09):   my $maxCutSeqNum  = int(($lowerCutoff/100) * keys(%headerLookup));
+1.18         (nbeck    20-Aug-09):   
+1.18         (nbeck    20-Aug-09):   my $nb_tot = keys(%headerLookup);
+1.18         (nbeck    20-Aug-09):   print "nb_tot : $nb_tot maxCut : $maxCutSeqNum\n";
+1.7          (dto      02-Dec-05):   my $cutSeqCounter = 0;
+1.4          (dto      02-Dec-05):   
+1.18         (nbeck    20-Aug-09):   foreach my $header (sort {$combi->{$a} <=> $combi->{$b} } keys %$combi){
+1.18         (nbeck    20-Aug-09):       my ($h1, $h2) = $header =~ m/^(\d+)\-(\d+)/;
+1.18         (nbeck    20-Aug-09):       
+1.4          (dto      02-Dec-05):       if(defined($foundSeq{$h1})) {
+1.7          (dto      02-Dec-05):          if(!defined($removeSeq{$h1})) {
+1.7          (dto      02-Dec-05):            $removeSeq{$h1} = $TRUE;
+1.18         (nbeck    20-Aug-09): 	       print "DEBUG: removing sequence $h1\n";
+1.7          (dto      02-Dec-05):            $cutSeqCounter++;
+1.7          (dto      02-Dec-05):          }
+1.4          (dto      02-Dec-05):       }
+1.4          (dto      02-Dec-05):       else {
+1.4          (dto      02-Dec-05):         $foundSeq{$h1}  = $TRUE;
+1.4          (dto      02-Dec-05):       }
+1.18         (nbeck    20-Aug-09):       
+1.18         (nbeck    20-Aug-09):       last if($maxCutSeqNum <=$cutSeqCounter);
+1.18         (nbeck    20-Aug-09):       
+1.4          (dto      02-Dec-05):       if(defined($foundSeq{$h2})) {
+1.8          (dto      02-Dec-05):         if(!defined($removeSeq{$h2})) {
+1.8          (dto      02-Dec-05):           $removeSeq{$h2} = $TRUE;
+1.18         (nbeck    20-Aug-09): 	      print "DEBUG: removing sequence $h2\n";
+1.7          (dto      02-Dec-05):           $cutSeqCounter++;
+1.7          (dto      02-Dec-05):         }
+1.4          (dto      02-Dec-05):       }
+1.4          (dto      02-Dec-05):       else {
+1.4          (dto      02-Dec-05):         $foundSeq{$h2}  = $TRUE;
+1.4          (dto      02-Dec-05):       }
+1.18         (nbeck    20-Aug-09):       last if($maxCutSeqNum <=$cutSeqCounter);
+1.4          (dto      02-Dec-05):     }
+1.4          (dto      02-Dec-05):   
+1.4          (dto      02-Dec-05):   if (keys %removeSeq == keys %headerLookup) {
+1.8          (dto      02-Dec-05):     exit(1);
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05): }
+1.18         (nbeck    20-Aug-09): 
+1.1          (dto      30-Nov-05): # Making New Model
+1.16         (riouxp   29-Jan-07): open(OUTPUT, ">$OUTPUTMODEL") or die "Could not open output file \"$OUTPUTMODEL\"\n";
+1.1          (dto      30-Nov-05): print OUTPUT ">structure\n$structureLine1\n$structureLine2\n";
+1.4          (dto      02-Dec-05):  
+1.18         (nbeck    20-Aug-09): my $nb_rem = keys(%removeSeq);
+1.18         (nbeck    20-Aug-09): my $maxCutSeqNum  = int(($lowerCutoff/100) * keys(%headerLookup));
+1.18         (nbeck    20-Aug-09): my $per_rem = $nb_rem ? int(($lowerCutoff * $nb_rem)/$maxCutSeqNum) : 0;
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): print "Only ${nb_rem}seq was removed (xxx) too many distant sequences.\n" if $nb_rem < $maxCutSeqNum && $nb_rem;
+1.18         (nbeck    20-Aug-09): 
+1.1          (dto      30-Nov-05): foreach my $header (sort keys %headerLookup) {
+1.1          (dto      30-Nov-05):   my $key = $header;
+1.1          (dto      30-Nov-05):   chomp($key); 
+1.1          (dto      30-Nov-05):   $key =~ s/>//g;
+1.13         (riouxp   29-Jan-07):   my $extendedHeader = $headerLookup{$header};
+1.18         (nbeck    20-Aug-09):   my $origHeader     = &RemoveDifferentiatingHeader($extendedHeader); # KLUDGE
+1.18         (nbeck    20-Aug-09):   
+1.1          (dto      30-Nov-05):   if(!defined($removeSeq{$key})) {
+1.13         (riouxp   29-Jan-07):     print OUTPUT $origHeader;
+1.13         (riouxp   29-Jan-07):     print OUTPUT $sequences{$extendedHeader};
+1.1          (dto      30-Nov-05):   }
+1.11         (dto      01-Feb-06):   else {
+1.13         (riouxp   29-Jan-07):     print "Removing: $key, $origHeader";
+1.11         (dto      01-Feb-06):   }
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): close (OUTPUT);
+1.1          (dto      30-Nov-05): 
+1.4          (dto      02-Dec-05): #   Tell user where files are
+1.18         (nbeck    20-Aug-09): print BLUE "New Training set was saved in:      ";
+1.18         (nbeck    20-Aug-09): print YELLOW "$OUTPUTMODEL\n";
+1.7          (dto      02-Dec-05): 
+1.4          (dto      02-Dec-05): if($TRANSLATIONTABLEFLAG) {
+1.18         (nbeck    20-Aug-09):   print BLUE "Translation table was saved in: ";
+1.18         (nbeck    20-Aug-09):   print YELLOW "$TRANSLATIONTABLE\n";
+1.4          (dto      02-Dec-05): }
+1.4          (dto      02-Dec-05): if($SAVEPUZZLEFILEFLAG) {
+1.18         (nbeck    20-Aug-09):   print BLUE "Puzzle file was saved in:       ";
+1.18         (nbeck    20-Aug-09):   print YELLOW "$PUZZLEFILE\n";
+1.4          (dto      02-Dec-05): }
+1.4          (dto      02-Dec-05): 
+1.13         (riouxp   29-Jan-07): exit 0;
+1.13         (riouxp   29-Jan-07): 
+1.13         (riouxp   29-Jan-07): ###############
+1.13         (riouxp   29-Jan-07): # Subroutines #
+1.13         (riouxp   29-Jan-07): ###############
+1.13         (riouxp   29-Jan-07): 
+1.13         (riouxp   29-Jan-07): sub AddDifferentiatingHeaders {
+1.13         (riouxp   29-Jan-07):     # Add a hexadecimal counter at the begining of each header
+1.13         (riouxp   29-Jan-07):     # line, with "!" signs. e.g.  ">allo" becomes  ">!91c!allo".
+1.13         (riouxp   29-Jan-07):     # If routine changed, modify RemoveDifferentiatingHeader() too.
+1.13         (riouxp   29-Jan-07):     my $textfile = shift; # array of text lines
+1.13         (riouxp   29-Jan-07):     my $counter = 0;
+1.13         (riouxp   29-Jan-07):     for (my $n=0;$n < @$textfile;$n++) {
+1.13         (riouxp   29-Jan-07):         my $line = $textfile->[$n];
+1.13         (riouxp   29-Jan-07):         next unless $line =~ m#^>#;
+1.13         (riouxp   29-Jan-07):         substr($line,0,1) = sprintf(">!%04x!",$counter++);
+1.13         (riouxp   29-Jan-07):         $textfile->[$n]=$line;
+1.13         (riouxp   29-Jan-07):     }
+1.13         (riouxp   29-Jan-07): }
+1.13         (riouxp   29-Jan-07): 
+1.13         (riouxp   29-Jan-07): sub RemoveDifferentiatingHeader {
+1.13         (riouxp   29-Jan-07):     # Undoes what AddDifferentiatingHeaders() for a single string.
+1.13         (riouxp   29-Jan-07):     # If routine changed, modify AddDifferentiatingHeaders() too.
+1.13         (riouxp   29-Jan-07):     my $header = shift;
+1.13         (riouxp   29-Jan-07):     $header =~ s/^>![a-fA-F0-9]{4}!/>/;
+1.18         (nbeck    20-Aug-09):     return $header;
+1.13         (riouxp   29-Jan-07): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub OpenFile {
+1.1          (dto      30-Nov-05):   my $file = shift;
+1.1          (dto      30-Nov-05):   open(IN, $file);
+1.1          (dto      30-Nov-05):   my @data = <IN>;
+1.1          (dto      30-Nov-05):   my $lines = @data;
+1.1          (dto      30-Nov-05):   close(IN);
+1.1          (dto      30-Nov-05):   return @data;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub SaveFile {
+1.1          (dto      30-Nov-05):   my $file = shift;
+1.1          (dto      30-Nov-05):   my @data = @_;
+1.1          (dto      30-Nov-05):   open(OUT, ">$file") or return $FALSE;
+1.1          (dto      30-Nov-05):   print OUT @data;
+1.1          (dto      30-Nov-05):   close(OUT);
+1.1          (dto      30-Nov-05):   return $TRUE;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub ReadDistanceTable {
+1.1          (dto      30-Nov-05):   my @data = @_;
+1.1          (dto      30-Nov-05):   my @columns;
+1.1          (dto      30-Nov-05):   my $remainder;
+1.1          (dto      30-Nov-05):   my %distanceTable = ();
+1.1          (dto      30-Nov-05):   
+1.1          (dto      30-Nov-05):   my ($seqNum)= shift(@data) =~ m/^\s*(\d+)/;
+1.1          (dto      30-Nov-05):   $remainder = $seqNum + 1;
+1.1          (dto      30-Nov-05):   # Read all numbers (headers and distances) into one large one dimensional array
+1.1          (dto      30-Nov-05):   foreach my $line (@data) {
+1.1          (dto      30-Nov-05):     chomp($line);
+1.1          (dto      30-Nov-05):     $line =~ s/\s+/ /g;
+1.1          (dto      30-Nov-05):     my @tmp   = split(" ", $line);
+1.1          (dto      30-Nov-05):     my $count = @tmp;
+1.1          (dto      30-Nov-05):     $remainder -= $count;
+1.1          (dto      30-Nov-05):     push @columns, @tmp;
+1.1          (dto      30-Nov-05):     if($remainder == 0) {
+1.1          (dto      30-Nov-05):       $remainder = $seqNum + 1;
+1.1          (dto      30-Nov-05):       next;
+1.1          (dto      30-Nov-05):     }
+1.1          (dto      30-Nov-05):   }
+1.18         (nbeck    20-Aug-09): 
+1.1          (dto      30-Nov-05):   # Pull out all distances and place into a hash of hash data structure,
+1.1          (dto      30-Nov-05):   # searched by sequence header. ie $distanceTable{header1}{header2}
+1.1          (dto      30-Nov-05):   for(my $i=0;$i<(@columns);$i++){
+1.18         (nbeck    20-Aug-09):     my $mod = ($i % ($seqNum + 1));
+1.18         (nbeck    20-Aug-09):     my $div = int($i / ($seqNum + 1));
+1.18         (nbeck    20-Aug-09):     next if ( $mod == 0 );
+1.1          (dto      30-Nov-05):     $distanceTable{$columns[($div)*($seqNum + 1)]}{$columns[($mod-1)*($seqNum + 1)]} = $columns[$i];
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05):   return \%distanceTable;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub getStructureValue {
+1.18         (nbeck    20-Aug-09):   my ($a,$b) = @_;
+1.1          (dto      30-Nov-05):   my $c = ($a * 10)+ $b;
+1.1          (dto      30-Nov-05):   return $c;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub Usage {
+1.10         (dto      27-Jan-06):   print "Usage: $0 [-h -i <inputfile> -o <outputfile> -l <lowercut off %> -p <newpuzzlefile> -r -t <translationtablefile>] <mask values>\n";
+1.1          (dto      30-Nov-05):   print "\t-h   Help\n" .
+1.1          (dto      30-Nov-05):         "\t-i   Input File Name\n" .
+1.1          (dto      30-Nov-05): 	"\t-o   Output File Name\n" .
+1.5          (dto      02-Dec-05): 	"\t-l   Lower Cutoff %\n".
+1.5          (dto      02-Dec-05): 	"\t-p   New Puzzle File Name\n".
+1.10         (dto      27-Jan-06): 	"\t-r   Just remove repeated sequences\n".
+1.4          (dto      02-Dec-05): 	"\t-t   Translationtable File Name\n";
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub SigCleanup { # private
+1.1          (dto      30-Nov-05):   die "\nExiting: received signal \"" . $_[0] . "\".\n";
+1.1          (dto      30-Nov-05):   # Note that some cleanup will be performed in the END block at this point.
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub CleanUp {
+1.18         (nbeck    20-Aug-09):     unlink $GBLOCKSIN;
+1.18         (nbeck    20-Aug-09):     unlink $GBLOCKSOUT;
+1.18         (nbeck    20-Aug-09):     unlink $GBLOCKSHTML;
+1.18         (nbeck    20-Aug-09):     unlink $ALI2PUZIN;
+1.18         (nbeck    20-Aug-09):     unlink $ALI2PUZOUT;
+1.18         (nbeck    20-Aug-09):     unlink $DNADISTANCE;
+1.18         (nbeck    20-Aug-09):     unlink $INFILE;
+1.18         (nbeck    20-Aug-09):     unlink $DNACOMMAND;
+1.1          (dto      30-Nov-05): }
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05): sub MakeReverseDistanceLookup {
+1.1          (dto      30-Nov-05):   my $distanceTableRef = shift;
+1.1          (dto      30-Nov-05):   my %distanceTable = %$distanceTableRef;
+1.1          (dto      30-Nov-05):   my %reverseLookup;
+1.1          (dto      30-Nov-05): 
+1.1          (dto      30-Nov-05):   # We want this to be non-redundent too
+1.1          (dto      30-Nov-05):   my @list = sort keys %distanceTable;
+1.1          (dto      30-Nov-05):   for(my $i=0;$i<@list;$i++) {
+1.1          (dto      30-Nov-05):     for(my $j=$i+1;$j<@list;$j++) {
+1.1          (dto      30-Nov-05):       $reverseLookup{$distanceTable{$list[$i]}{$list[$j]}}{"$list[$i]-$list[$j]"} = 1;
+1.1          (dto      30-Nov-05):     }
+1.1          (dto      30-Nov-05):   }
+1.1          (dto      30-Nov-05):   return \%reverseLookup;
+1.18         (nbeck    20-Aug-09): }
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09): sub MakeCombination {
+1.18         (nbeck    20-Aug-09):   my $distanceTableRef = shift;
+1.18         (nbeck    20-Aug-09):   my %distanceTable = %$distanceTableRef;
+1.18         (nbeck    20-Aug-09):   my %combi;
+1.18         (nbeck    20-Aug-09): 
+1.18         (nbeck    20-Aug-09):   # We want this to be non-redundent too
+1.18         (nbeck    20-Aug-09):   my @list = sort keys %distanceTable;
+1.18         (nbeck    20-Aug-09):   for(my $i=0;$i<@list;$i++) {
+1.18         (nbeck    20-Aug-09):     for(my $j=$i+1;$j<@list;$j++) {
+1.18         (nbeck    20-Aug-09):         my $score = $distanceTable{$list[$i]}{$list[$j]};
+1.18         (nbeck    20-Aug-09):         $combi{"$list[$i]-$list[$j]"} = $score;
+1.11         (dto      01-Feb-06):     }
+1.11         (dto      01-Feb-06):   }
+1.18         (nbeck    20-Aug-09):   return \%combi;
+1.1          (dto      30-Nov-05): }
+1.10         (dto      27-Jan-06): 
+1.18         (nbeck    20-Aug-09): 
+1.10         (dto      27-Jan-06): # With exit, programme will go here
+1.10         (dto      27-Jan-06): END {
+1.10         (dto      27-Jan-06):   #CleanUp();
+1.10         (dto      27-Jan-06): }
+1.10         (dto      27-Jan-06): 

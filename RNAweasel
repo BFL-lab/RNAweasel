@@ -1,0 +1,715 @@
+#!/usr/bin/perl
+use strict;
+use Term::ANSIColor;
+
+use vars qw( $VERSION $RCS_VERSION );
+
+# Program's name and version number.
+$RCS_VERSION='$Id: RNAweasel,v 1.10 2007/04/23 16:47:02 riouxp Exp $';
+($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+
+
+###############################################
+# RNAweasel - questions & configuration       #
+###############################################
+# This script allows to :                     #
+# - create new param file                     #
+# - change param file                         #
+# - customize options and launch RNAweasel_cl #
+###############################################
+# Last Revision : 30/08/2006                  #
+# By Yann Lienhart                            #
+###############################################
+#
+# $Id: RNAweasel,v 1.10 2007/04/23 16:47:02 riouxp Exp $
+#
+# $Log: RNAweasel,v $
+# Revision 1.10  2007/04/23 16:47:02  riouxp
+# Fixed setup of tmp directory.
+#
+# Revision 1.9  2007/03/12 17:21:48  riouxp
+# Fixed bug where results where always sorted by e-value even
+# when not requested by user.
+#
+# Revision 1.8  2007/02/01 20:14:01  riouxp
+# Fixed coloring problem with one of the status messages.
+#
+# Revision 1.7  2007/01/30 22:45:13  riouxp
+# Esthetic changes only. Reports its version number properly.
+#
+# Revision 1.6  2007/01/30 19:52:43  riouxp
+# Removed spurious empty prototypes for subroutines.
+#
+# Revision 1.5  2007/01/29 20:43:18  riouxp
+# Adjusted printed messages as requested by Franz.
+#
+# Revision 1.4  2007/01/22 18:22:03  riouxp
+# Newly added. This is the REAL interactive wrapper.
+#
+
+my $TRUE           = 1;
+my $FALSE          = 0;
+
+
+my $TMP_DIR        = "/tmp"; #this is the default directory for temp files
+
+my $REMOVEREPEATED = $TRUE;
+my $EVALUEFILTER   = $FALSE;
+my $LOWER          = 0;
+my $UPPER          = 100;
+my $USEDISTANCE    = $FALSE;
+my $DISTANCECUTOFF = 0;
+my $REITERATE      = $FALSE;
+my $REINJECT       = $FALSE;
+my $EVALUESORT     = $FALSE;
+
+my $command;
+
+if (@ARGV == 0)
+{
+	print "There were no arguments passed on the command line. This program takes Erpin arguments\n\n";
+	Usage();
+	exit(1);
+}
+
+#check if the user want to enter in the config mode
+if ($ARGV[0] =~/-config/)
+{ 
+	printParamStatus();
+}
+else 
+{
+	#get arguments
+	my $MODELFILE     = shift @ARGV;
+	my $DATAFILE      = shift @ARGV;
+	my @ERPINARGS     = @ARGV;
+	
+	print color 'bold';
+	print "\n***********************\n";
+	print "**** RNAweasel $VERSION ****\n";
+	print "***********************\n\n"; 
+	print color 'reset';
+	
+	$command = "RNAweasel_cl $MODELFILE $DATAFILE ";
+	
+	#User interface for program options
+	#28
+	#$ERPIN = whichErpinVersion(\@ERPINVERSION,\@ERPINPATH);
+	#$command .= "-v $ERPIN ";
+	
+	#ask user if he wish to remove repeated sequences
+	$REMOVEREPEATED = askRemoveRepeats();
+	if (!$REMOVEREPEATED) { $command .= "-r "; }
+	
+	#ask the user if he wish to use Evalue Filtering
+	$EVALUEFILTER = askEvalueFilter();
+	if ($EVALUEFILTER) 
+	{
+		#if yes, ask for cutoff
+		($LOWER,$UPPER) = askEvalueCutOff();
+		$EVALUESORT = $TRUE;
+		$command .= "-ec $LOWER $UPPER ";
+	}
+	
+	#Ask the user if he wish to use Phylogeny distance Filtering
+	#if yes, ask for cutoff
+	$USEDISTANCE = askPhylogenyFilter();
+	if ($USEDISTANCE)
+	{
+		$DISTANCECUTOFF = askPhylogenyCutOff();
+		$command .= "-p $DISTANCECUTOFF ";
+	}
+	
+	# Ask user if they wish to reiterate
+	$REITERATE = askReiteration();
+	if ( $REITERATE )
+	{
+		$REINJECT = askAppendModelToEachIteration();
+		if    (!$REINJECT ) { $command .= "-i ";}
+		else { $command .= "-ia ";}
+	}
+	
+	# Ask user if they wish to display by evalue or original order
+	# Note: if the user is using cut offs, then the sorting must be e-value
+	# So if they have already selected cutoffs, EVALUESORT has already been
+	# set to TRUE
+	if(!$EVALUEFILTER) { $EVALUESORT = askEvalueSorting();$command .= "-e " if $EVALUESORT;}
+	
+	# Ask the user for a specific log dir
+	my $newtmp = askUserDirNameForLogFiles();
+	$command .= "-d $newtmp " if $newtmp;
+	
+	# Finish the creation of the new command line
+	$command = "$command@ERPINARGS";
+	
+	#print command on the screen
+	print $command,"\n";
+	
+	#Launch RNAweasel_cl
+	system ($command);
+}
+
+###########################################
+# Interface with User for RNAweasel       #
+###########################################
+# This section contains functions dealing #
+# with the interface with the user        #
+###########################################
+# Last Revision : 30/08/2006              #
+# By Yann Lienhart                        #
+###########################################
+
+#Check if the file in argument exist
+sub checkFile
+{
+	my $File = shift(@_); #file name
+	
+	if (!-e $File ) { die "Sequence file $File does not exist\n";}
+}
+
+#Check if related programs like Erpin & distpin can be found
+sub checkRelatedProgs
+{
+	my $ProgPath = shift(@_); #ARG - Program path
+	my $ProgName = shift(@_); #ARG - Program name
+	
+	if (!-e $ProgPath) 
+	{
+  		die "Unable to find $ProgName at $ProgPath. Please ask your Systems Administrator to check this out\n";
+	}
+}
+
+#Function that gets the user keyboard answer 
+sub getUserAnswer
+{
+	my $answer = <STDIN>; #get answer
+	chomp($answer);
+	return $answer; #return answer
+}
+
+#Function which asks user if he wants to append search results to training set
+sub askAppendModelToEachIteration
+{
+	my $DONT_APPEND_ANYTHING=0;
+	my $APPEND_TO_EACH=1;
+	
+	while() 
+	{
+		print color 'bold';
+		print "\nDo you wish to append Erpin results to the original training set? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) ) 
+		{
+			print color 'green';
+			print "\nOriginal training set will be used for all iterations\n\n";
+			print color 'reset';
+			return $DONT_APPEND_ANYTHING;
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) ) 
+		{
+			print color 'green';
+			print "\nResults will be added to training set after each iteration\n\n";
+			print color 'reset';
+			return $APPEND_TO_EACH;
+		}
+	}
+}
+
+#function which ask user if he wanted to remove repeated sequences
+sub askRemoveRepeats
+{
+	my $REMOVE_REPEATS = 1;
+	my $DONT_REMOVE_REPEATS = 0;
+	
+	while() 
+	{
+		print color 'bold';
+		print "Do you wish to remove repeated sequences from the training set? (Y/N):[Y]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(Y|y)$/) ) 
+		{
+			print color 'green';
+			print "\nRemoving repeated sequences.\n\n";
+			print color 'reset';
+			return $REMOVE_REPEATS;
+		}
+		elsif( ($answer =~ m/^(N|n)$/) ) 
+		{
+			print color 'green';
+			print "\nNot removing repeated sequences.\n\n";
+			print color 'reset';
+			return $DONT_REMOVE_REPEATS;
+		}
+	}
+}
+
+#function which asks user if he wanted to use the automatic reiteration system.
+sub askReiteration
+{
+	my $REITERATE = 1;
+	my $DONT_REITERATE = 0;
+	
+	while() 
+	{
+		print color 'bold';
+		print "Do you wish to reiterate? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+		{
+			print color 'green';
+			print "\nRunning Erpin only once.\n\n";
+			print color 'reset';
+			return $DONT_REITERATE;
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) ) 
+		{
+			return $REITERATE;
+		}
+	}
+	
+}
+
+#Function which asks if the user wanted to sort results by Evalue or By original order
+sub askEvalueSorting
+{
+	my $EVALUE_ORDER = 1;
+	my $ORIGINAL_ORDER = 0;
+	
+	while() 
+	{
+		print color 'bold';
+		print "Do you wish to sort by E-value? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+		{
+			print color 'green';
+			print "\nSorting by original sequence order.\n\n";
+			print color 'reset';
+			return $ORIGINAL_ORDER;
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) )
+		{
+			print color 'green';
+			print "\nSorting by E-value order.\n\n";
+			print color 'reset';
+			return $EVALUE_ORDER;
+		}
+	}
+}
+
+# Function which ask if the user wanted to use the Phylogenetic filter
+sub askPhylogenyFilter
+{
+	my $PHYLOGENY_ON = 1;
+	my $PHYLOGENY_OFF = 0;
+	
+	while()
+	{
+		print color 'bold';
+		print "Do you wish to use phylogenetic distance filtering ? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+		{
+			print color 'green';
+			print "\nPhylogeny Filter OFF\n\n";
+			print color 'reset';
+			return $PHYLOGENY_OFF; 
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) )
+		{
+			print color 'green';
+			print "\nPhylogeny Filter ON\n\n";
+			print color 'reset';
+			return $PHYLOGENY_ON;
+		}
+	}
+}
+ 
+#Function which get and return the value of the Phylogenic Cut off
+sub askPhylogenyCutOff
+{
+	while()
+	{
+		print color 'bold';
+		print "Please enter the % of sequences to eliminate : ";
+		print color 'reset';
+		
+		my $cutoff_value = getUserAnswer();
+		
+		if(($cutoff_value =~ m/^\d+$/) and ($cutoff_value <=  100) and ($cutoff_value >=  0)) 
+		{
+			print "\n";
+			return $cutoff_value;
+		}
+	}
+}
+
+#Function which asks if the user wanted to use the Evalue Filter
+sub askEvalueFilter
+{
+	my $EVALUE_FILTER_ON  = 1;
+	my $EVALUE_FILTER_OFF = 0;
+	
+	while()
+	{
+		print color 'bold';
+		print "Do you wish to use Evalue Filtering ? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+		{
+			print color 'green';
+			print "\nEvalue Filter OFF\n\n";
+			print color 'reset';
+			return $EVALUE_FILTER_OFF; 
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) )
+		{
+			print color 'green';
+			print "\nEvalue Filter ON\n\n";
+			print color 'reset';
+			return $EVALUE_FILTER_ON;
+		}
+	}
+}
+
+#Function which gets and return the lower and the upper Evalue cut off percentage
+sub askEvalueCutOff
+{
+	my ($LOWER,$UPPER);
+	
+	LOW: while ()
+	{
+		print color 'bold';
+		print "Please enter the lower Evalue cutoff in % (0 means worst solution) : ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^\d+$/) and ($answer >=  0) and ($answer <= 100) ) 
+		{
+			$LOWER = $answer;
+			
+			UP: while ()
+			{
+				print color 'bold';
+				print "Please enter the upper Evalue cutoff in % : ";
+				print color 'reset';
+			
+				$answer = getUserAnswer();
+				
+				if( ($answer =~ m/^\d+$/) and ($answer <=  100) and ($answer > $LOWER) ) 
+				{
+					$UPPER = $answer;
+					last LOW;
+				}
+				else 
+				{
+					print color 'red';
+					print "Value must be less than 100 and greater than $LOWER\n";
+					print color 'reset';
+					next UP;
+				}
+			}
+		}
+		else 
+		{
+			print color 'red';
+			print "Value must be greater than 0 and less than 100\n";
+			print color 'reset';
+			next LOW;
+		}
+		
+	}
+	print "\n";
+	return ( $LOWER, $UPPER );
+}
+
+# Function which asks user if he wants to conserve tempfiles
+sub askUserDirNameForLogFiles
+{
+	while() 
+	{
+		print color 'bold';
+		print "Do you wish to specify a directory name for log files ? (Y/N):[N]: ";
+		print color 'reset';
+		
+		my $answer = getUserAnswer();
+		
+		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+		{
+                    #print color 'green';
+                    #print "\nLog files are created in /tmp and discarded later on.\n\n";
+                    #print color 'reset';
+                    return undef;
+		}
+		elsif( ($answer =~ m/^(Y|y)$/) )
+		{
+			print color 'bold';
+			print  "\nPlease Enter the name of the directory for log and temporary files : ";
+			print color 'reset';
+			$answer = getUserAnswer();
+			print color 'green';
+			print "\nLog files in $answer\n\n";
+			print color 'reset';
+			return $answer;
+		}
+		
+	}
+}
+
+##########################
+## CONFIGURATION MODULE ##
+##########################
+ 
+# Main function for this module
+# Here we print the current status (no paramaters | current parameters)
+# Then we ask the user if he wanted to create/change parameters
+sub printParamStatus
+{
+	my $paramfile = $ENV{HOME}."/.RNAweasel";
+	
+	print "\nRNAweasel CONFIGURATION Module\n\n";
+	print "RNAweasel can work with a parameter file. By asking for \"configuration mode\", you can create or change your own parameters.\n\n";
+	print "Current status : ";
+	
+		
+	if (!-e $paramfile) 
+	{
+		print "No parameter file available for this user\n";
+		while ()
+		{
+			print "\nDo you want to create a new parameters file (Y/N) ?";
+			my $answer = getUserAnswer();
+			
+			if( $answer =~ m/^(N|n)$/ ) 
+			{
+				print color 'green';
+				print "\nSkip creation - no paramaters file available\n\n";
+				print color 'reset';last;
+			}
+			elsif( ($answer =~ m/^(Y|y)$/) ) 
+			{
+				createNewParamFile();last;
+			}
+			
+		}
+	}
+	else
+	{
+		print color 'blue';
+		print color 'bold';
+		print "\nParameters File exists for this user.\n\nCurrent parameters :\n";
+		
+		open (PARAM,$paramfile) or die ("Unable to open $paramfile\n");
+		my @file = <PARAM>;
+		close PARAM;
+		print @file;
+		print color 'reset';
+		
+		while ()
+		{
+			print "\nDo you want to change those parameters (Y/N) ?";
+			my $answer = getUserAnswer();
+			
+			if( $answer =~ m/^(N|n)$/ ) 
+			{
+				print color 'green';
+				print "\nCurrent parameters in use\n\n";
+				print color 'reset';last;
+			}
+			elsif( ($answer =~ m/^(Y|y)$/) ) 
+			{
+				createNewParamFile();last;
+			}
+			
+		}
+	}
+}
+
+# Function which allows user to create a new parameter file
+sub createNewParamFile
+{
+	my $answer;
+	my $paramfile = $ENV{HOME}."/.RNAweasel";
+	open (PARAM,">$paramfile") or die ("Unable to create $paramfile\n");
+	
+	print PARAM ">ERPIN_PATH\n";
+	print "Please enter complete path for Erpin: ";
+	$answer = getUserAnswer();
+	print PARAM "$answer\n";
+	
+	print PARAM ">DISTPIN\n";
+	print "Please enter complete path for distpin: ";
+	$answer = getUserAnswer();
+	print PARAM "$answer\n";
+	
+	print PARAM ">MF2FASTA\n";
+	print "Please enter complete path for mf2fasta: ";
+	$answer = getUserAnswer();
+	print PARAM "$answer\n";
+	
+	print PARAM "END\n";	
+}
+
+###################
+## Help function ##
+###################
+
+#this function is printed if the user do not gives any argument
+sub Usage
+{
+	print color 'bold';
+	print "\nHow to - RNAweasel - Questions Version\n\n";
+	print "Syntax :";
+	print color 'reset';
+	print "RNAweasel training_set_file sequences_files [ERPIN parameters]\n\n";
+	
+	print color 'bold';
+	print "Access to the configuration module :\nRNAweasel -config\n\n";
+	print color 'reset';
+	
+	exit(1);
+}
+
+#########################################
+## Function which are not used anymore ##
+#########################################
+
+#Function which asks if the user wanted to do a full alignment.
+#When he use an Evalue Filter, the cut off selection is also applicated to the last created model.
+#If the user wanted a full alignment, he can choose to do another pass of model creation without the Evalue cut off.
+#This is usefull when you reiterate the process, for example when there is 10 times new values and new model.
+#For each iteration, the evalue cut off is used, so you only work with the best results.
+#For the final model, by selecting full alignment, you ignore this evalue you used fr the research and create a model with all the solutions.
+#sub askFullAlignment
+#{
+#	my $WRITE_FULL_ALIGNMENT = 1;
+#	my $DONT_WRITE_FULL_ALIGNMENT = 0;
+#	
+#	while() 
+#	{
+#		print color 'bold';
+#		print "Do you wish to write out the full alignment also ? (Y/N):[N]: ";
+#		print color 'reset';
+#		
+#		my $answer = getUserAnswer();
+#		
+#		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+#		{
+#			print color 'green';
+#			print "\nOnly writing out Erpin only once\n\n";
+#			print color 'reset';
+#			return $DONT_WRITE_FULL_ALIGNMENT; 
+#		}
+#		elsif( ($answer =~ m/^(Y|y)$/) )
+#		{
+#			print color 'green';
+#			print "\nWriting Full Alignment\n\n";
+#			print color 'reset';
+#			return $WRITE_FULL_ALIGNMENT;
+#		}
+#	}
+#}
+
+#Erpin error when no results
+#sub noErpinResultError
+#{
+#	print color 'red';
+#	print "****************************************\n";
+#	print "* There was a problem running Erpin!!! *\n";
+#	print "*  Erpin did not produce any output.   *\n";
+#	print "*  Please try running an alternative   *\n";
+#	print "*          version of Erpin            *\n";
+#	print "****************************************\n"; 
+#	print color 'reset';
+#	exit(1);
+#}
+
+#Function which asks user which version of erpin he wants to run
+#sub whichErpinVersion
+#{
+#	my ($ERPINVERSION) = shift(@_);
+#	my ($ERPINPATH) = shift(@_);
+#	my $ERPIN;
+#	
+#	while() 
+#	{
+#		print color 'bold';
+#		print "Which version of Erpin do you wish to use?\n";
+#		
+#		#print all the different version at screen
+#		for(my $i=0; $i<@$ERPINVERSION;$i++) 
+#		{
+#			print "  $i)" . @$ERPINVERSION[$i] . "\n";
+#		}
+#		print "\n[default 0]: ";
+#		print color 'reset';
+#		
+#		my $answer = getUserAnswer();
+#		
+#		#check if the answer is correct, print user choice a screen
+#		if(($answer =~ m/^$/) or (($answer >= 0) and ($answer < scalar(@$ERPINVERSION)))) 
+#		{
+#			$ERPIN = @$ERPINPATH[$answer];
+#			print color 'green';
+#			print "\nUsing the version @$ERPINVERSION[$answer]\n\n";
+#			print color 'reset';
+#			last;
+#		}
+#	}
+#	return $ERPIN;# returns the path of the used version
+#}
+
+#Function which asks user if he wanted to search Evalue for the training set.
+#When you started with a new training set, perhaps you wanted to apply at the beginning an evalue filter before running erpin.
+#By answering yes to this question, the programs search evalue for the training set, and apply the filter on it.
+#sub askSearchTrainingSetEvalue
+#{
+#	my $SEARCH_EVALUE = 1;
+#	my $DONT_SEARCH_EVALUE = 0;
+#	
+#	while() 
+#	{
+#		print color 'bold';
+#		print "Do you wish to search Evalue for your training set ? (Y/N):[N]: ";
+#		print color 'reset';
+#		
+#		my $answer = getUserAnswer();
+#		
+#		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+#		{
+#			print color 'green';
+#			print "\nEvalue search disabled on training set\n\n";
+#			print color 'reset';
+#			return $DONT_SEARCH_EVALUE; 
+#		}
+#		elsif( ($answer =~ m/^(Y|y)$/) )
+#		{
+#			print color 'green';
+#			print "\nSearching Evalues for training set and use Evalues Cut off on it\n\n";
+#			print color 'reset';
+#			return $SEARCH_EVALUE;
+#		}
+#		
+#	}
+#}
+  

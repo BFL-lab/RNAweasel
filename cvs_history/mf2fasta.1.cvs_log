@@ -1,0 +1,20 @@
+
+RCS file: /share/CVS/unix-utils/mf2fasta/mf2fasta.1,v
+Working file: mf2fasta.1
+head: 1.2
+branch:
+locks: strict
+access list:
+symbolic names:
+keyword substitution: kv
+total revisions: 2;	selected revisions: 2
+description:
+----------------------------
+revision 1.2
+date: 2005-07-14 15:41:58 +0000;  author: dto;  state: Exp;  lines: +4 -4;
+Updated man page - fixed number of arguments the programme expects
+----------------------------
+revision 1.1
+date: 2005-04-15 01:04:42 +0000;  author: dto;  state: Exp;
+Added man page
+=============================================================================

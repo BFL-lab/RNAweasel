@@ -1,0 +1,95 @@
+
+RCS file: /share/CVS/unix-utils/distpin/distpin,v
+Working file: distpin
+head: 1.18
+branch:
+locks: strict
+access list:
+symbolic names:
+keyword substitution: kv
+total revisions: 18;	selected revisions: 18
+description:
+----------------------------
+revision 1.18
+date: 2009-08-20 19:40:45 +0000;  author: nbeck;  state: Exp;  lines: +133 -208;
+Cleaned old code and replaced puzzle by dnadist.
+----------------------------
+revision 1.17
+date: 2007-02-01 19:25:06 +0000;  author: riouxp;  state: Exp;  lines: +6 -3;
+Made sure sequence data fed to puzzle are in UPPERCASE, otherwise
+puzzle crashes.
+----------------------------
+revision 1.16
+date: 2007-01-29 20:31:37 +0000;  author: riouxp;  state: Exp;  lines: +52 -49;
+Esthetic changes to progression messages, as requested by Franz.
+----------------------------
+revision 1.15
+date: 2007-01-29 19:46:59 +0000;  author: riouxp;  state: Exp;  lines: +6 -3;
+Fixed check.
+----------------------------
+revision 1.14
+date: 2007-01-29 19:43:55 +0000;  author: riouxp;  state: Exp;  lines: +13 -5;
+Added checks for proper input model file.
+----------------------------
+revision 1.13
+date: 2007-01-29 19:38:02 +0000;  author: riouxp;  state: Exp;  lines: +45 -7;
+Added kludge to allow handling properly model files that
+have multiple entries with the same name.
+----------------------------
+revision 1.12
+date: 2006-02-25 00:34:57 +0000;  author: dto;  state: Exp;  lines: +5 -26;
+Removed commented out code
+----------------------------
+revision 1.11
+date: 2006-02-01 21:05:37 +0000;  author: dto;  state: Exp;  lines: +42 -23;
+Added debugging
+----------------------------
+revision 1.10
+date: 2006-01-27 01:40:29 +0000;  author: dto;  state: Exp;  lines: +36 -12;
+Fixed Usage
+Move END code
+Print out sequences that are removed.
+----------------------------
+revision 1.9
+date: 2005-12-02 18:41:31 +0000;  author: dto;  state: Exp;  lines: +7 -3;
+Fixed banner message
+----------------------------
+revision 1.8
+date: 2005-12-02 18:41:00 +0000;  author: dto;  state: Exp;  lines: +13 -8;
+Fixed model stuff
+Fixed version number
+----------------------------
+revision 1.7
+date: 2005-12-02 18:14:52 +0000;  author: dto;  state: Exp;  lines: +29 -10;
+Changed method for removing sequences from model - will only remove a % of sequences
+given the cut off, rather than a all sequences repeated in the % of pairs
+----------------------------
+revision 1.6
+date: 2005-12-02 15:33:28 +0000;  author: dto;  state: Exp;  lines: +9 -7;
+Fixed progress bar
+----------------------------
+revision 1.5
+date: 2005-12-02 15:32:15 +0000;  author: dto;  state: Exp;  lines: +26 -8;
+Added checking for existance of input file
+Fixed bug with translation table
+Fixed but with usage
+----------------------------
+revision 1.4
+date: 2005-12-02 15:01:29 +0000;  author: dto;  state: Exp;  lines: +214 -152;
+Added sleep of 1 second before puzzle
+Added translation table output
+Added remove repeated sequence only function
+Added Puzzle file saving function
+----------------------------
+revision 1.3
+date: 2005-12-01 21:52:58 +0000;  author: dto;  state: Exp;  lines: +28 -17;
+Fixed parameters of Puzzle
+----------------------------
+revision 1.2
+date: 2005-11-30 22:10:40 +0000;  author: dto;  state: Exp;  lines: +7 -4;
+Added mask values to Usage
+----------------------------
+revision 1.1
+date: 2005-11-30 22:03:17 +0000;  author: dto;  state: Exp;
+Added programme to filter eprin models based on distances
+=============================================================================

@@ -1,0 +1,30 @@
+1.1          (dto      15-Apr-05): MF2FASTA(1)            OGMP SEQUENCE UTILITIES                MF2FASTA(1)
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): NAME
+1.2          (dto      14-Jul-05):     mf2fasta - Converts a masterfile into fasta format
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): DESCRIPTION
+1.2          (dto      14-Jul-05):     mf2fasta  takes only one argument, the name of the masterfile to be
+1.2          (dto      14-Jul-05):     converted. By default, the converted masterfile is sent to standard out.A
+1.2          (dto      14-Jul-05):     If no arguments are supplied, the usage is displayed.
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): OPTIONS
+1.1          (dto      15-Apr-05):     mf2fasta [-n -c <num char/line> -o <outfile> -h] masterfile
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05):     All options are optional.
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05):      -n
+1.1          (dto      15-Apr-05):         Print sequence position on each line
+1.1          (dto      15-Apr-05):      -c integer
+1.1          (dto      15-Apr-05):         Number of characters per line
+1.1          (dto      15-Apr-05):      -o filename
+1.1          (dto      15-Apr-05):         Send the output to file (default standard out)
+1.1          (dto      15-Apr-05):      -h
+1.1          (dto      15-Apr-05):         Display the usage
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): SEE ALSO
+1.1          (dto      15-Apr-05):     printscf(1), fixscf(1), formatfasta(1)
+1.1          (dto      15-Apr-05): 
+1.1          (dto      15-Apr-05): AUTHOR
+1.1          (dto      15-Apr-05):     David To, April 2005
+1.1          (dto      15-Apr-05):     Franz Lang (Project Management)

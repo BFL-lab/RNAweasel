@@ -1,0 +1,30 @@
+MF2FASTA(1)            OGMP SEQUENCE UTILITIES                MF2FASTA(1)
+
+NAME
+    mf2fasta - Converts a masterfile into fasta format
+
+DESCRIPTION
+    mf2fasta  takes only one argument, the name of the masterfile to be
+    converted. By default, the converted masterfile is sent to standard out.A
+    If no arguments are supplied, the usage is displayed.
+
+OPTIONS
+    mf2fasta [-n -c <num char/line> -o <outfile> -h] masterfile
+
+    All options are optional.
+
+     -n
+        Print sequence position on each line
+     -c integer
+        Number of characters per line
+     -o filename
+        Send the output to file (default standard out)
+     -h
+        Display the usage
+
+SEE ALSO
+    printscf(1), fixscf(1), formatfasta(1)
+
+AUTHOR
+    David To, April 2005
+    Franz Lang (Project Management)

@@ -1,0 +1,1734 @@
+#!/usr/bin/perl -w
+use Term::ANSIColor qw(:constants);
+use strict;
+use File::Copy;
+use File::Basename;
+use IO::File;
+
+#######################################
+# RNAweasel_cl : Command line version #
+#######################################
+
+#############################################################################
+#
+#    $Id: RNAweasel_cl,v 1.21 2009/08/04 20:20:48 nbeck Exp $
+#
+#    $Log: RNAweasel_cl,v $
+#    Revision 1.21  2009/08/04 20:20:48  nbeck
+#    Cleaned old code, and added -pc option (->erpin cutoff).
+#
+#    Revision 1.20  2008/08/04 20:54:27  riouxp
+#    Fixed coordinates computation in fullalignment report.
+#
+#    Revision 1.19  2008/06/27 18:11:53  riouxp
+#    Added doc for -L.
+#
+#    Revision 1.18  2008/03/13 17:22:05  riouxp
+#    Added -L option which allows the user to give the program a keyword
+#    that will end up in the .log output file.
+#
+#    Revision 1.17  2008/03/07 18:38:10  riouxp
+#    Added more doc in usage statement.
+#
+#    Revision 1.16  2008/02/22 21:16:41  riouxp
+#    Added option -o to let the user specify the name of the final
+#    fullalignment file and its .log. So "-o abcd" will create the two
+#    final files "abcd" and "abcd.log" (which correspond to the default
+#    names MODELFILE-nn.fullalignment and MODELFILE-nn.fullalignment.log)
+#
+#    Revision 1.15  2008/02/09 00:10:26  riouxp
+#    Fixed one and for all problems with file naming for temp files,
+#    that prevented many instances of this program to run concurently.
+#
+#    Revision 1.14  2007/04/03 21:08:54  riouxp
+#    Adjusted layout of report.
+#
+#    Revision 1.13  2007/04/03 19:11:07  riouxp
+#    Even more changes to improve memory handling using references.
+#
+#    Revision 1.12  2007/04/03 18:39:10  riouxp
+#    Changed how some subroutine receive and return data structures
+#    so that references are used instead of whole array copying.
+#
+#    Revision 1.11  2007/02/07 20:41:09  riouxp
+#    The new "-s" option now reinsterts the stripped left and right
+#    regions of the structure, along with flanking alignments, and
+#    also adjusts the reported match coordinates.
+#
+#    Revision 1.10  2007/02/02 03:26:22  riouxp
+#    Removed debugging traces that are no longer necessary.
+#
+#    Revision 1.9  2007/02/02 03:18:53  riouxp
+#    Added "-s" option that tells the program to strip leading and
+#    trailing elements of the training set that are outside the
+#    leftmost and rightmost selected elements of erpin. This result
+#    in a new training set created just beside the original one,
+#    with a "-S" inserted in the filename just before the ".epn";
+#    all results file are afterwards created with this convention.
+#
+#    Revision 1.8  2007/01/30 22:38:39  riouxp
+#    Fixed bracket routine to show full sequence of an element that
+#    was selected on the command line.
+#
+#    Revision 1.7  2007/01/30 19:39:37  riouxp
+#    Rewrote the bracket system for the logfile.
+#
+#    Revision 1.6  2007/01/29 21:08:51  riouxp
+#    Improved printed messages as requested by Franz.
+#
+#    Revision 1.5  2007/01/23 20:32:05  riouxp
+#    Added RCS version number in output; removed redundant missing
+#    prototypes that caused spurious warnings with -w.
+#
+#    Revision 1.4  2007/01/22 18:22:43  riouxp
+#    Quick fix for warning in clumsy parsing loop.
+#
+#    Revision 1.3  2007/01/22 17:11:18  riouxp
+#    Fixed a few syntactic bugs. Completely re-engineered the
+#    subroutine modifyModelSeq() that restructure the erpin output
+#    alignment.
+#
+#    Revision 1.2  2006/12/14 21:11:40  riouxp
+#    Fix problem when model file supplied in arg is a full path name.
+#
+#    Revision 1.1  2006/11/16 18:23:58  riouxp
+#    Renamed "RNAweasel_cl" as appropriate. "RNAweasel" is
+#    a seperate interactive wrapper.
+#
+#    Revision 1.1  2006/11/15 19:00:04  riouxp
+#    Newly check-in version. This used to be "erpin-weasel".
+#
+
+#####################
+##--MODULES CALLS--##
+#####################
+
+use vars qw( $VERSION $RCS_VERSION );
+
+# Program's name and version number.
+$RCS_VERSION='$Id: RNAweasel_cl,v 1.21 2009/08/04 20:20:48 nbeck Exp $';
+($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+
+print "This is $BASENAME version $VERSION.\n";
+
+###############################
+##--Check arguments numbers--##
+###############################
+if (@ARGV == 0) {
+	print "\nThere were no arguments passed on the command line. This program takes arguments\n";
+	Usage();
+}
+
+#############################
+##--SET PATHS & CONSTANTS--##
+#############################
+$|=1;
+
+#global variables
+my $MODELFILE      = shift @ARGV;
+my $MODELBASE      = basename($MODELFILE);
+my $DATAFILE       = shift @ARGV;
+my @ERPINARGS;
+
+#default path, can be changed in parameters file.
+my $ERPIN          = "/share/supported/bin/erpin";
+my $DISTPIN        = "/share/supported/bin/distpin";
+my $MF2FASTA       = "/share/supported/bin/mf2fasta";
+
+my $TRUE           = 1;
+my $FALSE          = 0;
+my $DEBUG          = 0;
+
+#default parameters for the script
+my $REMOVEREPEATED = 1;
+my $EVALUEFILTER   = 0;
+my $LOWER          = 0;
+my $UPPER          = 100;
+my $USEDISTANCE    = 0;
+my $DISTANCECUTOFF = 0;
+my $REITERATE      = 0;
+my $REINJECT       = 0;
+my $EVALUESORT     = 0;
+my $POURCENTISDEF  = 0;
+my $POURCENT       = undef;
+my $TMP_DIR        = "/tmp/rnaweaselcl.$$";
+
+my $NO_MF2FASTA      = 0;     # -F option
+my $RESULT_FILE_BASE = "";    # -o option
+my $LOG_LABEL        = undef; # -L option
+
+# Model stripping options
+my $STRIP_MODEL          = 0; # on or off, based on -s on command line
+my $STRIP_MODEL_L_STRUCT = "";
+my $STRIP_MODEL_R_STRUCT = "";
+
+#hash table which contains all sequences
+my $Rseqs; # Changed to ref to hash
+
+###############################
+## -- Read parameter File -- ## 
+###############################
+my $paramfile = $ENV{HOME}."/.RNAweasel";
+($ERPIN,$DISTPIN,$MF2FASTA ) = readParamFile() if (-e $paramfile);
+
+
+##################################
+##-- Deal with the arguments -- ##
+##################################
+while() {
+	my $arg = shift @ARGV;
+	
+	if ($arg eq "-v") {
+		$ERPIN = shift @ARGV;next;
+	}
+	elsif ($arg eq "-r") {
+		$REMOVEREPEATED = 0;next;
+	}
+	elsif ($arg eq "-e") {
+		$EVALUESORT = 1;next;
+	}
+	elsif ($arg eq "-ec") {
+		$EVALUESORT = 1;
+		$arg = shift @ARGV;
+		if ($arg >= 0 && $arg <100) {
+			$LOWER = $arg;
+			$arg = shift @ARGV;
+			if ($arg <= 100 && $arg > $LOWER)
+			{$UPPER = $arg;}
+			else {print "\nWrong Evalue cutoff\n";Usage();}
+		}
+		else {print "\nWrong Evalue cutoff\n";Usage();}
+		next;
+	}
+	elsif ($arg eq "-p") {
+		$USEDISTANCE = 1;
+		$arg = shift @ARGV;
+		if ($arg > 100 || $arg < 0) {
+			print "\nWrong Phylogenetic cutoff\n";Usage();
+		}
+		$DISTANCECUTOFF = $arg;
+		next;
+	}
+	elsif ($arg eq "-i") {
+		$REITERATE     = 1;
+		$REINJECT      = 0;
+		next; 
+	}
+	elsif ($arg eq "-ia") {
+		$REITERATE     = 1;
+		$REINJECT      = 1;
+		next; 
+	}
+	elsif ($arg eq "-d") {
+		$TMP_DIR = shift @ARGV;
+		next; 
+	}
+	elsif ($arg eq "-s") {
+    # strip leading and trailing unused elements of model file
+		$STRIP_MODEL = 1;
+		next; 
+	}
+	elsif ($arg eq "-F") { 
+    # do not run MF2FASTA on the sequence data
+        $NO_MF2FASTA = 1;
+        next;
+    }
+    elsif ($arg eq "-o") {
+    # override final result basename ( .fullalignment and .fullalignment.log )
+        $RESULT_FILE_BASE = @ARGV ? shift(@ARGV) : die "Argument missing for -o option.\n";
+    }
+    elsif ($arg eq "-L") {
+    # Outputs a user-selected string into the .log file
+        $LOG_LABEL = @ARGV ? shift(@ARGV) : die "Argument missing for -L option.\n";
+    }
+    elsif ($arg eq "-pc"){
+        $POURCENTISDEF = 1;
+        $POURCENT      = @ARGV ? shift(@ARGV) : die "Argument missing for -L option.\n";
+        die 'Value of option -pc must be include between 0 and 100' 
+            if !($POURCENT > 0 && $POURCENT <= 100);
+    }
+	else {
+		my @arg = @ARGV;
+		@ERPINARGS = ($arg, @arg);
+		last;
+	}
+}
+
+# Parsing Erpin Arguments
+my ($erpinMaskNums, $USER_CUTOFF) = &ParseErpinArgs(@ERPINARGS);
+my @erpinMaskNums = @$erpinMaskNums; #NB according with old code
+my $lowest = $erpinMaskNums[0];
+unless (-d $TMP_DIR) { mkdir($TMP_DIR,0755); }
+my $FileForCut = &CreateFileForCutoff if $POURCENTISDEF;
+
+#############################################
+# Preprocessing step: Strip unused elements #
+#############################################
+if ($STRIP_MODEL) {
+    my $stripped = $MODELFILE;
+    unless ($stripped =~ s/.epn$/-S.epn/) {
+        $stripped .= "-S";
+    }
+    my $newregion = "";
+    ($newregion, $STRIP_MODEL_L_STRUCT, $STRIP_MODEL_R_STRUCT)
+        = MakeStrippedModel($MODELFILE,$stripped,\@erpinMaskNums,$ERPINARGS[0]);
+    # Override so that the rest of the program works the same.
+    $ERPINARGS[0] = $newregion;
+    $MODELFILE=$stripped;
+    $MODELBASE=basename($MODELFILE);
+}
+
+###############################################################
+##--Check Sequences Files and Erpin,Distpin,MF2FASTA paths --##
+############################################################### 
+
+checkFile($MODELFILE);
+checkFile($DATAFILE);
+checkRelatedProgs($DISTPIN,"DISTPIN");
+checkRelatedProgs($MF2FASTA,"MF2FASTA");
+checkRelatedProgs($ERPIN,"ERPIN");
+
+###################################
+##--Creation of temporary files--##
+###################################
+my $TMPOUTPUTFILE   = "$TMP_DIR/erpin-output.$$";				    #tmp erpin outputfile
+my $TMPDATAFILE     = "$TMP_DIR/" . basename($DATAFILE) . ".$$";	#tmp file with data sequences
+my $TS_SEQ_FILE     = "$TMP_DIR/Tmp_TS_Sequences.seq";			    #tmp TS sequences
+my $TMP_TS_SEQ_FILE = "$TMP_DIR/" . basename($TS_SEQ_FILE) . ".$$";	#tmp TS seq formated by mf2fasta
+my $LOG_FILE        = "$TMP_DIR/logfile.log.$$";					#log file
+
+## ++ LOG ++ ##
+open (LOG,">$LOG_FILE") or die "Could not create log file $LOG_FILE";
+print LOG "****** $BASENAME $VERSION RUN *******\nParameters :\n";
+print LOG "Training set : $MODELFILE --- Data : $DATAFILE --- ARG_Erpin : @ERPINARGS\n";
+print LOG "ERPIN : $ERPIN\nDISTPIN : $DISTPIN\nMF2FASTA : $MF2FASTA\n\n";
+print LOG "Program Options :\nRemove Repeats : $REMOVEREPEATED\n";
+print LOG "Eval Sorting : $EVALUESORT Evalue Filter-> lower : $LOWER - upper : $UPPER\n";
+print LOG "Distance Filter : $USEDISTANCE - cutoff : $DISTANCECUTOFF\n";
+print LOG "Reiterate : $REITERATE - Reinject model (append) : $REINJECT\n";
+print LOG "Strip leading and trailing elements of model file: ",($STRIP_MODEL ? "TRUE\n" : "FALSE\n");
+print LOG "Logs dir : $TMP_DIR\n";
+## -- LOG -- ##
+
+# list of sequences
+my $Rdata;	    #only seqs file
+my $Rts_seq;	#only TS file
+my $Rmix;	    #mix of TS & seqs files
+my @modlist;	#list of temp models name - used only to remove temp file at the end
+
+#If you wanted to work with reinjection, you have to create a mixes sequences file : TS + Data
+if ($REINJECT) {
+	#Temporary files creation
+	open(MIX, ">$TMP_DIR/MixSeqs.seq") or die ("Could not create Mixseqs file!");
+	open(TSSEQ, ">$TS_SEQ_FILE") or die ("Could not create training set sequence file!");
+	
+	#Open Datafile _ read only - copy in mixed file
+	open(DATA, $DATAFILE) or die ("Could not open output file!");
+	my @temp = <DATA>;
+	print MIX @temp;
+	#Copy the Training set file in mixed file
+	my @file = RemoveStructureLines($MODELFILE);  
+	print MIX @file;
+	print TSSEQ @file;
+	
+	#Close Temporary files
+	close ( DATA  );
+	close ( TSSEQ );
+	close ( MIX   );
+	
+	## ++ LOG ++ ## 
+	print LOG "\n\n\n****** Training SET VS Training SET ******\n\n";
+	print LOG "\nCreation of temporary files for Append option :\n";
+	print LOG "TS seqs file : $TS_SEQ_FILE - Mixed seqs file : $TMP_DIR/MixSeqs.seq\n";
+	print LOG "\nConversion of those files via MF2FASTA :\n";
+	## -- LOG -- ##
+	
+	#Conversion of sequences files via mf2fasta (take care if you dont do it, sometimes it Weasel will crash)
+	system("$MF2FASTA $TMP_DIR/MixSeqs.seq > $TMP_DIR/MixSeqs.tmp");
+	system("$MF2FASTA $TS_SEQ_FILE > $TMP_TS_SEQ_FILE");
+	
+	## ++ LOG ++ ##
+	print LOG "Newly generated files : TS seqs file : $TMP_TS_SEQ_FILE - Mix seqs file : $TMP_DIR/MixSeqs.tmp\n";
+	## -- LOG -- ##
+	
+	#read Files
+	$Rts_seq = readSeqFile ( $TMP_TS_SEQ_FILE );
+	$Rmix    = readSeqFile ( "$TMP_DIR/MixSeqs.tmp");
+}
+
+#convert data file via mf2fasta
+if (!$NO_MF2FASTA) {
+    system("$MF2FASTA $DATAFILE > $TMPDATAFILE");
+} else {
+    system("/bin/cp $DATAFILE $TMPDATAFILE");
+}
+
+## ++ LOG ++ ##
+print LOG "\nConversion of seqs file via MF2FASTA : Old Seqs File : $DATAFILE ==> New Seqs File : $TMPDATAFILE\n";
+## -- LOG -- ##
+
+#Read data file
+$Rdata = readSeqFile ( $TMPDATAFILE );
+
+##########################
+# Start Reiteration part #
+##########################
+my ($prevResult,$counter,$numModels) = (0,0,0);
+my $outputModel;
+my $inputModel = copyFile($MODELFILE,"$TMP_DIR/$MODELBASE");
+
+#count number of model in the training set
+my $originalModelNum = CounteModelsInFile($inputModel);
+my $newModelNum      = $originalModelNum;
+
+my @erpin_ts_output; #this variable allow to save the erpin results in order to reinject them later
+
+#Research Evalues for the training set
+if ($REINJECT) {
+	#For the first cycle versus TS, you need that eval cutoff is disabled
+	my ($tmpupper,$tmplower) = (100,0);
+    
+	#Initialisation of seqs hash with training set sequences
+	$Rseqs = GetSeqFromDataFile($Rts_seq);
+	
+    # Run the 2 filters - remove repeated sequences and phylogenetic distance filter
+    # Remove repeated sequences 
+    ($inputModel,$newModelNum) = &RemoveRepeatedSeq($counter,$inputModel,$newModelNum)
+        if $REMOVEREPEATED;
+    # Remove by phylogenetic distance
+    ($inputModel,$newModelNum) = &RemoveByPhyloDist($counter,$inputModel,$newModelNum)
+        if $USEDISTANCE;
+    
+    my $cutoff = &DefineCutoffWithPourcent($inputModel,$FileForCut,\@ERPINARGS,$USER_CUTOFF) if $POURCENTISDEF;
+       $cutoff = $USER_CUTOFF                                                                if !$POURCENTISDEF;
+    
+	# # # RUN ERPIN # # #
+	my $COMMAND = "$ERPIN $inputModel $TMP_TS_SEQ_FILE @ERPINARGS -cutoff $cutoff";
+	system("$COMMAND | tee $TMPOUTPUTFILE");
+	
+	## ++ LOG ++ ##
+	print LOG "Running erpin... : model : $inputModel seqsFile : $TMP_TS_SEQ_FILE erpinArgs : @ERPINARGS\n";
+	print LOG "Save Results (Erpin Output) in $TMPOUTPUTFILE\n";
+	## -- LOG -- ##
+	
+	#Save Erpin results
+	open (TS, "$TMPOUTPUTFILE")or die ("Could not open Erpin ouput");
+	@erpin_ts_output = <TS>;
+	close(TS);
+	
+	#Create the training set model (and now there is Evalues in the training set)
+	($outputModel,$originalModelNum) = MakeModel($inputModel,$TMPOUTPUTFILE,$tmplower,$tmpupper,$FALSE); #evalue CO = 0-100%
+	
+	## ++ LOG ++ ##
+	print LOG "\nMakeModel => Creation of a new Model File - parameters :\n";
+	print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel\n";
+	print LOG "settings : l_eval_co : $tmplower - u_eval_co : $tmpupper - FullAlignment Flag : $FALSE\n";
+	print LOG "Number of sequences in the new Model : $originalModelNum\n";  
+	## -- LOG -- ##
+	
+	#Save the path of temp file if you wanted to erase them later
+	push (@modlist,"$outputModel");
+	push (@modlist,"$outputModel.log");
+	
+	#put this new model in input
+	$inputModel=$outputModel;
+	
+	#initialisation of seqs hash with mixed sequences 
+	$Rseqs = GetSeqFromDataFile ($Rmix);
+}
+else { 
+    $Rseqs = GetSeqFromDataFile($Rdata); 
+} #else initialize seqs hash only with data sequences
+
+# variables with save the best model
+my ($best_FA_nb,$best_nb) = (0,0);
+
+## ++ LOG ++ ##
+print LOG "\nEND OF FIRST PART\n\n\nSTARTING THE NORMAL CYCLE PART\n\n";
+## -- LOG -- ##
+
+do {
+	# Open the previous Model file if this is not the first iteration
+	$inputModel = $outputModel if ($counter > 0);
+	
+	print LOG "\n\n****** Iteration number : $counter ******\n";
+	
+	# Run the 2 filters - remove repeated sequences and phylogenetic distance filter
+    # Remove repeated sequences 
+    ($inputModel,$newModelNum) = &RemoveRepeatedSeq($counter,$inputModel,$newModelNum)
+        if $REMOVEREPEATED;
+    # Remove by phylogenetic distance
+    ($inputModel,$newModelNum) = &RemoveByPhyloDist($counter,$inputModel,$newModelNum)
+        if($USEDISTANCE);
+	
+    my $cutoff = &DefineCutoffWithPourcent($inputModel,$FileForCut,\@ERPINARGS,$USER_CUTOFF) if $POURCENTISDEF;
+       $cutoff = $USER_CUTOFF                                                                if !$POURCENTISDEF;
+       
+	###############
+	## Run erpin ##
+	###############
+	my $COMMAND = "$ERPIN $inputModel $TMPDATAFILE @ERPINARGS -cutoff $cutoff";
+	system("$COMMAND | tee $TMPOUTPUTFILE");
+	
+	## ++ LOG ++ ##
+	print LOG "\nRunning erpin... : model : $inputModel seqsFile : $TMPDATAFILE erpinArgs : @ERPINARGS\n";
+	print LOG "Save Results (Erpin Output) in $TMPOUTPUTFILE\n";
+	## -- LOG -- ##
+	
+	#if reinjection, we just add erpin training set vs training set results to the new erpin output
+	if ($REINJECT) {
+		open (ATS, ">>$TMPOUTPUTFILE") or die ("Could not open temporary erpin file !");
+		print ATS @erpin_ts_output; 
+		close(ATS);
+		
+		print LOG "\nAppend ON : adding erpin TS results to $TMPOUTPUTFILE\n";
+	}
+	
+	#create the corresponding full alignment
+	my ($outputModel_FA,$current_nbmodel) = MakeModel($inputModel,$TMPOUTPUTFILE,0,100,$TRUE);
+	
+	## ++ LOG ++ ##
+	print LOG "\nMakeModel => Creation of a new training set - parameters :\n";
+	print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel_FA\n";
+	print LOG "settings : l_eval_co : $LOWER - u_eval_co : $UPPER - FullAlignment Flag : $TRUE\n";
+	print LOG "Number of sequences in the new training set : $current_nbmodel\n";  
+	## -- LOG -- ##
+	
+	#save temp file names for future removing
+	push (@modlist,"$outputModel_FA");
+	push (@modlist,"$outputModel_FA.log");
+	
+	if ($current_nbmodel >= $best_FA_nb) { 
+        $best_FA_nb = $current_nbmodel; 
+        print LOG "This full alignment is better than the old one\n";
+    }
+	
+	# If there is an Evalue filter, create the Evalue filtered model
+	if ( !($LOWER == 0 && $UPPER == 100) ) {
+		# creation of the eval filtered model
+		($outputModel,my $current_eval_nbmodel) = MakeModel($inputModel,$TMPOUTPUTFILE,$LOWER,$UPPER,$FALSE);
+		
+		## ++ LOG ++ ##
+		print LOG "\nMakeModel => Creation of a new training set - parameters :\n";
+		print LOG "inputmodel : $inputModel - erpinoutput : $TMPOUTPUTFILE - outputmodel : $outputModel\n";
+		print LOG "settings : l_eval_co : $LOWER - u_eval_co : $UPPER - FullAlignment Flag : $FALSE\n";
+		print LOG "Number of sequences in the new training set : $current_eval_nbmodel\n";
+		## -- LOG -- ##
+		
+		#save temp file names for future removing
+		push (@modlist,"$outputModel");
+		push (@modlist,"$outputModel.log");
+		
+		if ($current_nbmodel >= $best_FA_nb) { 
+            $best_nb = $current_eval_nbmodel;
+            print LOG "This training set is better than the old one\n";
+        }
+		
+		#if the tmp dir is different than default, print more logs on the screen 
+		if ($TMP_DIR ne "/tmp") {
+			print BLUE, "The training set can be found in ", RESET;
+			print BOLD, "\"$outputModel\"\n", RESET;
+			print BLUE, "The log for the training set can be found in ", RESET;
+			print BOLD, "\"$outputModel.log\"\n", RESET;
+		}
+	}
+	else {
+		$outputModel = $outputModel_FA;
+	}
+	
+	#if the tmp dir is different than default, print more logs on the screen
+	if ($TMP_DIR ne "/tmp") {
+		print BLUE, "The Full Alignment can be found in ",RESET;
+		print BOLD, "\"$outputModel_FA\"\n",RESET;
+		print BLUE, "The log for the Full alignment file can be found in ",RESET;
+		print BOLD, "\"$outputModel_FA.log\"\n\n",RESET;
+	}
+	
+	#Here we deal with the break condition of the main loop
+	if($prevResult >= $current_nbmodel) { 
+		$REITERATE = 0; 
+		print LOG "nb seqs previous model : $prevResult\nnb seqs new model : $current_nbmodel\n ==> END OF REITERATION\n";
+	}
+	$prevResult = $current_nbmodel;
+	# Increment number of cycles already done in the main Loop
+	$counter++;
+} while ($REITERATE);
+
+sub RemoveRepeatedSeq {
+    my ($counter,$inputModel,$newModelNum) = @_;
+    
+    my $TMPMODELFILE = "$TMP_DIR/rm_repeat_model.$$.$counter";
+    my $command  = "$DISTPIN -i $inputModel -o $TMPMODELFILE -r @erpinMaskNums";
+    $inputModel  = Remove_Repeated_Sequences ($command,$TMPMODELFILE);
+    $newModelNum = CounteModelsInFile($inputModel);
+    
+    print LOG "\nRemoving Repeated sequences\n";
+    print LOG "inputmodel : $inputModel - outputmodel : $TMPMODELFILE\n";
+    print LOG "New number of seqs : $newModelNum\n";
+    # inputmodel is now : rm_repeat
+	
+    return ($inputModel,$newModelNum);
+}
+
+sub RemoveByPhyloDist {
+    my ($counter,$inputModel,$newModelNum) = @_;
+    
+    my $TMPMODELFILE = "$TMP_DIR/dist_filt_model.$$.$counter";
+    my $command      = "$DISTPIN -l $DISTANCECUTOFF -i $inputModel -o $TMPMODELFILE -t translation.txt @erpinMaskNums";
+    $inputModel      = Remove_Seq_By_Phylo_Distance($command,$TMPMODELFILE);
+    $newModelNum     = CounteModelsInFile($inputModel);
+    
+    print LOG "\nPhylogenetic distance filter\n";
+    print LOG "inputmodel : $inputModel - cut off : $DISTANCECUTOFF outputmodel : $TMPMODELFILE\n";
+    print LOG "New number of seqs : $newModelNum\n";
+    # inputmodel is now : dist_filt
+    
+    return ($inputModel,$newModelNum);
+}
+
+# Copy the best models in the user directory and print paths on the screen
+if ( !($LOWER == 0 && $UPPER == 100) ) {
+	my $best_model = copyFile ("$TMP_DIR/$MODELBASE-$best_nb","$MODELFILE-$best_nb");
+	print BLUE,"The Best training set for this session can be found in ", RESET;
+	print BOLD,"\"$best_model\"\n", RESET;
+	
+	print LOG "\nBest training set : $best_model - log file : $best_model.log\n";
+	
+	$best_model = copyFile ("$TMP_DIR/$MODELBASE-$best_nb.log","$MODELFILE-$best_nb.log");
+	print BLUE,"The Log File can be found in ", RESET;
+	print BOLD,"\"$best_model\"\n", RESET;
+}
+
+my $RESULT_FILE_FA     = $RESULT_FILE_BASE
+                       ? "$RESULT_FILE_BASE"
+                       : "$MODELFILE-$best_FA_nb.fullalignment";
+my $RESULT_FILE_FA_LOG = "$RESULT_FILE_FA.log";
+
+copyFile("$TMP_DIR/$MODELBASE-$best_FA_nb.fullalignment",$RESULT_FILE_FA);
+print BLUE,"Results in Erpin training set format : ", RESET;
+print BOLD,"\"$RESULT_FILE_FA\"\n", RESET;
+
+print LOG "\nTraining set format: $RESULT_FILE_FA - log file : $RESULT_FILE_FA_LOG\n"; 
+close(LOG);
+
+copyFile("$TMP_DIR/$MODELBASE-$best_FA_nb.fullalignment.log","$RESULT_FILE_FA_LOG");
+print BLUE,"Results in condensed alignment format: ", RESET;
+print BOLD,"\"$RESULT_FILE_FA_LOG\"\n\n", RESET;
+
+# End of the script
+exit(0);
+
+# If the user has not specified a log directory, remove all temporary files
+END {
+	if (defined($TMP_DIR) && $TMP_DIR eq "/tmp/rnaweaselcl.$$") {
+        system("/bin/rm","-rf",$TMP_DIR);
+        # other unlinks probably no longer valid
+		unlink($TMPOUTPUTFILE,$TMPDATAFILE,"$TMP_DIR/MixSeqs.seq","$TMP_DIR/MixSeqs.tmp");
+		unlink($TS_SEQ_FILE,$TMP_TS_SEQ_FILE,$LOG_FILE);
+		unlink("$TMP_DIR/$MODELBASE");
+		for (my $i=0;$i<=$counter;$i++) {
+			unlink("$TMP_DIR/rm_repeat_model.$$.$i","$TMP_DIR/dist_filt_model.$$.$i");
+		}
+		foreach my $mod (@modlist) {
+			unlink($mod);
+		}
+	}	
+}
+
+# Function which create a new training set with or without evalue filter
+sub MakeModel {
+	############################
+	## Variables & arguments  ##
+	############################
+	my ($modelFile,$outputfile,$ECO_LOW,$ECO_UP,$FA_FLAG)  = @_;
+	my ($outSeqsRef, $outSeqEvalueOrderRef, $outSeqOriginalOrderRef, $dirRef, $startRef, $endRef, $eValueRef, $upper, $lower, $origNumResults);
+	
+	############################
+	## Read Erpin output file ##
+	############################
+	open(OUTPUT, $outputfile) or die ("Could not open output file '$outputfile': $!\n");
+	my @erpinOutputFile = <OUTPUT>;
+	close(OUTPUT);
+	# If there is no results in this file => quit with error message
+	noErpinResultError() if (@erpinOutputFile == 0);
+	
+	###########################################################################################
+	## Lecture des sequences dans le fichier output erpin avec prise en compte bornes evalue ##
+	###########################################################################################
+	($outSeqsRef, $outSeqEvalueOrderRef, $outSeqOriginalOrderRef, $dirRef, $startRef, $endRef, $eValueRef, $upper, $lower, $origNumResults) = GetSeqFromOutputFile($ECO_LOW, $ECO_UP, \@erpinOutputFile);
+	
+	my %outSeqs              = %$outSeqsRef;
+	my @outSeqsEvalueOrder   = @$outSeqEvalueOrderRef;
+	my @outSeqsOriginalOrder = @$outSeqOriginalOrderRef;
+	my %dir                  = %$dirRef;
+	my %start                = %$startRef;
+	my %end                  = %$endRef;
+	my %eValue               = %$eValueRef;
+	
+	#####################
+	## Read Model File ##
+	#####################
+	open(MODEL, $modelFile) or die ("Could not open output file!");
+	my @modelFile = <MODEL>;
+	close(MODEL);
+	
+	#Get the structures lines from the model file
+	my $structure = GetStructureFromModelFile(\@modelFile);
+
+        if ($STRIP_MODEL) { # Adjust structure
+            my ($s1,$s2)   = split(/\n/,$structure);
+            my ($s1l,$s2l) = split(/\n/,$STRIP_MODEL_L_STRUCT);
+            my ($s1r,$s2r) = split(/\n/,$STRIP_MODEL_R_STRUCT);
+            $structure = "$s1l$s1$s1r\n" . "$s2l$s2$s2r\n";
+        }
+	
+	#Count number of sequences in the model
+	my $numModels = @outSeqsEvalueOrder;
+	#Create the new model name
+    $outputModel = $FA_FLAG ? "$MODELBASE-$numModels.fullalignment" : "$MODELBASE-$numModels";
+	
+	#############################
+	# 6. Build new training set #
+	#############################
+	
+	#creation of new model & log files
+	my $modelLogFile    = "$TMP_DIR/$outputModel.log";
+	open(OUTMODELLOG, ">$modelLogFile")      or die "Could not open training set logfile\n";
+	open(OUTMODEL, ">$TMP_DIR/$outputModel") or die "Could not open new training set file\n";
+	
+	#Print structure in the training set
+	print OUTMODEL ">structure\n";
+	print OUTMODEL $structure;
+
+	## BEGIN : HEADER LOG FILE
+	print OUTMODELLOG "*************************************************\n";
+	print OUTMODELLOG "Condensed alignment for $outputModel\n";
+	print OUTMODELLOG "*************************************************\n";
+	print OUTMODELLOG "There are $numModels matches\n";
+    print OUTMODELLOG "Processing label: $LOG_LABEL\n" if defined $LOG_LABEL;
+	
+	if($FA_FLAG) { print OUTMODELLOG "\n"; }
+	else {
+		print OUTMODELLOG "There were originally $origNumResults sequences in this training set\n";
+		print OUTMODELLOG "The lower cut off was set to $ECO_LOW%, and " . ($origNumResults - $lower) . " sequences were removed\n";
+		print OUTMODELLOG "The upper cut off was set to $ECO_UP%, and " . $upper . " sequences were removed\n";
+	}
+	print OUTMODELLOG "The phylogenic distance cutoff was set to $DISTANCECUTOFF, and " . ($originalModelNum-$newModelNum) . " sequences were removed\n"
+        if($USEDISTANCE);
+	## END : HEADER LOG FILE 
+	
+	my $prefixLen       = GetStructurePos($structure, $lowest);
+	my $prefixIndex     = $prefixLen;
+	my $suffixLen       = 0;
+	my $suffixIndex     = 0;
+	my $structureLen    = GetStructureLength($structure);
+
+	# Need to loop through all sequences first for report
+	# to see the max length of each sequence
+	# This is mainly because the sequences/models in the report
+	# need to be aligned, and if we don't know their lengths
+	# and gaps, then the alignments will be bad.
+	
+	my @maxBitLen;
+	my @preLoop = @outSeqsOriginalOrder;
+	
+	foreach my $key (@preLoop) {
+		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+		my @reportHeader = split(" ", $hashKey);
+		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+		my @seqBits = split(/\./, $tmpSeq);
+		
+		for(my $i=0;$i<@seqBits;$i++) {
+			if($seqBits[$i] =~ m/^[\-]+$/) { $seqBits[$i] = "";}
+			#If this is lowercase
+			if(!defined($maxBitLen[$i])) { $maxBitLen[$i] = length($seqBits[$i]); }
+			elsif(length($seqBits[$i]) > $maxBitLen[$i]) { $maxBitLen[$i] = length($seqBits[$i]); }
+		}
+	}
+	
+	print OUTMODELLOG "Species name                       E-value   # of nt     Start..Stop     Str  #  Structure\n";
+	print OUTMODELLOG "------------------------------  ---------- --------- -------------------- -- --- ------------------\n"; 
+    #Fields:           ssssssssssssssssssssssssssssss| EEEEEEEEEE NNNNNNNNN PPPPPPPPP..PPPPPPPPP SS MMM [[[...
+    #Fields:           0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+    #print OUTMODELLOG "---------------------------------------------------------------------------------------------------\n"; 
+    #printing brackets system in log file  
+    #print OUTMODELLOG " " x 76 . MakeLogBracketsOld($structure, @maxBitLen) . "\n";
+    print OUTMODELLOG "                                                                                 ";
+    print OUTMODELLOG MakeLogBracketsNew($structure, \@maxBitLen, \@erpinMaskNums) . "\n";
+	
+	my @sortedList;
+	if($EVALUESORT == $TRUE) { @sortedList = @outSeqsEvalueOrder; }
+	else { @sortedList = @outSeqsOriginalOrder;}
+	
+	#Copy sequences in the LOG file
+	foreach my $key (@sortedList) {
+		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+		my @reportHeader = split(" ", $hashKey);
+		
+        $reportHeader[0] = substr($reportHeader[0], 0, 30) if(length($reportHeader[0]) > 30);
+		
+		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+		# Report
+		# Allo.macrogynus.mt      6.55e-24   55667   6877..7327  FW   1  TATACAATCG CTA C C GACTG gtt...(1151)...ctt AATGTA CAGTC G GTATTTCCAA
+		
+		printf OUTMODELLOG ("%-30s| %10s %9s %9s..%-9s %s %3s ",
+				$reportHeader[0],
+				@{$eValue{$hashKey}}[$arrayKey],
+				length($Rseqs->{$hashKey}),
+				@{$start{$hashKey}}[$arrayKey],
+				@{$end{$hashKey}}[$arrayKey],
+				@{$dir{$hashKey}}[$arrayKey],
+				($arrayKey+1));
+		
+		print OUTMODELLOG makeReportSeq($tmpSeq, @maxBitLen) . "\n";
+	}
+	
+#######  REMARK :
+#######  In this part, there is a lots of "length($var)".
+#######  I think they can be replaced by temporary variables but sometimes i was thinking that i causes somes crashes.
+#######  
+	
+	#Copy sequences in the model file
+	foreach my $key (@sortedList) {
+		# Remember that the $key here contains three values;
+		# but we only care aobut the $arrayKey and the $hashKey.
+		# The $dirKey here is only in there to make all keys in 
+		# the hash unique 
+		my($arrayKey, $dirKey, $hashKey) = split("<->", $key);
+		$key = $hashKey;
+		my $tmpSeq = @{$outSeqs{$hashKey}}[$arrayKey];
+		my @reportHeader = split(" ", $key);
+		
+		# Make all uppercase
+		$tmpSeq = uc($tmpSeq);
+		$tmpSeq =~ s/\.//g;
+		
+		# CREATE HEADER IN THE MODEL FILE    
+		# Make header 
+		my $header;
+		my $keyLen = length($key);
+		# Trucate sequence name if greater than 60 characters long
+		if($keyLen > 60) { $header = ">" . substr($key, 0, 59);}
+		else {
+			$header  = ">" . $key; 
+			$header .= " " x (59-$keyLen);
+		}
+
+		$suffixLen     = $structureLen - $prefixLen - length($tmpSeq);
+		$suffixIndex   = $prefixLen + length($tmpSeq);
+
+        my $posAdjustLeft  = ${$dir{$key}}[$arrayKey] eq "FW"
+                           ? -$prefixLen
+                           : -$suffixLen;
+        my $posAdjustRight = ${$dir{$key}}[$arrayKey] eq "FW"
+                           ? $suffixLen
+                           : $prefixLen;
+		
+		$header .= sprintf(" %3s %s %6s:%6s %10s %s\n",
+			($arrayKey+1),
+			${$dir{$key}}[$arrayKey],
+			(${$start{$key}}[$arrayKey] + $posAdjustLeft),
+			(${$end{$key}}[$arrayKey]   + $posAdjustRight),
+			${$eValue{$key}}[$arrayKey],
+			$DATAFILE);
+		
+		print OUTMODEL $header;
+		
+		my $headSeq;
+		my $tailSeq;
+		# If we need to print out the header sequence
+		if($prefixLen > 0) {
+			if(@{$dir{$key}}[$arrayKey]  =~ /^RC$/) { 
+			# We need to reverse-complement the original sequence
+				if(($prefixLen + @{$end{$key}}[$arrayKey]) < length($Rseqs->{$key})) {
+					$headSeq = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $prefixLen);
+					$headSeq = reverse($headSeq);
+					$headSeq =~ tr/ACGTacgt/TGCAtgca/;
+				}
+				elsif(@{$end{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+					$headSeq = "n" x ($prefixLen - (length($Rseqs->{$key}) - @{$end{$key}}[$arrayKey]));
+					my $tmp = reverse(substr($Rseqs->{$key}, (@{$end{$key}}[$arrayKey]) , $prefixLen));
+					$tmp =~ tr/ACGTacgt/TGCAtgca/;
+					$headSeq .= $tmp;
+				}
+				else {
+					$headSeq =  "n" x $prefixLen;
+				}
+			}
+			else {
+				if((@{$start{$key}}[$arrayKey] - $prefixIndex) > 0) {
+					$headSeq =  substr($Rseqs->{$key}, (@{$start{$key}}[$arrayKey] - $prefixIndex - 1), ($prefixLen));
+				}
+				elsif(@{$start{$key}}[$arrayKey] > 0 ) {
+					$headSeq  = "n" x ($prefixLen - @{$start{$key}}[$arrayKey] + 1);
+					$headSeq .=  substr($Rseqs->{$key}, 0, @{$start{$key}}[$arrayKey] - 1);
+				}
+				else {
+					$headSeq =  "n" x $prefixLen;
+				}
+			}
+			print OUTMODEL $headSeq;
+			print $key . "\n" if $DEBUG;
+		} 
+		
+		print OUTMODEL modifyModelSeqNew($tmpSeq, $structure, $prefixLen, \@erpinMaskNums);
+		
+		# If we need to print out the tail sequence
+		if($suffixLen > 0) {
+			if(@{$dir{$key}}[$arrayKey]  =~ /^RC$/) {
+				# We need to reverse-complement the original sequence
+				$suffixIndex   = @{$start{$key}}[$arrayKey] - $suffixLen;
+				
+				if($suffixIndex > 0) {
+					$tailSeq = substr($Rseqs->{$key}, ($suffixIndex - 1), $suffixLen);
+					$tailSeq = reverse($tailSeq);
+					$tailSeq =~ tr/ACGTacgt/TGCAtgca/;
+				}
+				elsif (@{$start{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+					$tailSeq  = substr(reverse($Rseqs->{$key}), (length($Rseqs->{$key}) - ($suffixLen + $suffixIndex) + 1), ($suffixLen + $suffixIndex));
+					$tailSeq  =~ tr/ACGTacgt/TGCAtgca/;
+					$tailSeq .= "n" x (($suffixIndex * -1) +1);
+				}
+				else {
+					$tailSeq =  "n" x $suffixLen;
+				}
+			}
+			else {
+				# We need to print out a pending sequence
+				my $len = @{$end{$key}}[$arrayKey];
+				
+				if(($suffixLen + $len) <= length($Rseqs->{$key})) {
+					$tailSeq = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $suffixLen);
+				}
+				elsif(@{$end{$key}}[$arrayKey] < length($Rseqs->{$key})) {
+					$tailSeq  = substr($Rseqs->{$key}, @{$end{$key}}[$arrayKey], $suffixLen);
+					$tailSeq .= "n" x ($suffixLen - (length($Rseqs->{$key}) - @{$end{$key}}[$arrayKey]));
+				}
+				else { 
+					$tailSeq =  "n" x $suffixLen;
+				}
+			}
+			print OUTMODEL $tailSeq;
+		}
+		print OUTMODEL "\n";
+	}
+	close OUTMODEL;
+	close OUTMODELLOG;
+	
+	return ("$TMP_DIR/$outputModel",$numModels);
+}
+
+###################################################
+## FUNCTION OF MAIN PART OF THE SCRIPT           ##
+###################################################
+
+#How to use this script message
+sub Usage {
+    my $to_print  = "\nHow to - $BASENAME - All-in-parameters Version\n\n";
+       $to_print .= "Syntax :";
+    print BOLD, $to_print, RESET;
+	print " (perl) $BASENAME training_set_file sequences_files [$BASENAME parameters] [ERPIN parameters]\n\n";
+	print BOLD, "List of $BASENAME parameters :\n", RESET;
+	print "     -v ERPIN_PATH    : to specify the path of a alternative Erpin version\n";
+	print "     -r               : to disable removing of repeated sequences\n";
+	print "     -e               : to sort by evalue the results\n";
+	print "     -ec LCO UCO      : to activate Evalue filter with LCO = Lower cutoff and UCO = Upper cut off\n";
+	print "                     those values must me between 0 and 100 and LCO < UCO\n";
+	print "     -p  CUTOFF       : to activate phylogenetic distance filter with CUTOFF as percentage of sequences to remove\n";
+    print "     -pc ERPIN CUTOFF : Percentage of cutoff values defined by erpin.\n";
+	print "     -i               : to reiterate the programm until the model cannot be better\n";
+	print "     -ia              : to reinject the data of the original training set in each iteration\n";
+	print "     -d DIR           : Allow to choose a specific directory in which $BASENAME will put all temporary files\n";
+    print "     -s               : strip final model: leftmost  and rightmost elements outside those\n";
+    print "                        select on the command-line will be deleted.\n";
+    print "     -F               : do not run \"mf2fasta\" on the input sequence.\n";
+    print "     -o filebase      : override final alignement filenames: filebase and filebase.log will\n";
+    print "                        be used instead.\n";
+    print "     -L keyword       : keyword is an optional label that will end up in the .log file for your\n";
+    print "                        convenience.\n";
+	print BOLD, "\nExamples :\n\n", RESET;
+	print ">$BASENAME training_set.epn sequences.all -v /erpin5.2.1.light/bin/erpin -r -ec 50 100 -p 50 -iaf -d logs 1,13 -add 2 3 -add 5 7 9 -logzero -5 -cutoff 10 15\n\n";
+	print ">script_name         ts_file        seq_file    [-------------------${BASENAME}_Arguments---- ------------------] [---------------ERPIN_ARGUMENTS------------------]\n\n";       
+	print BOLD, "\nSyntax for Erpin arguments :\n\n", RESET;
+	print "Please see ERPIN documentation for further informations\n\n";
+	exit(1);
+}
+
+# read a sequences file and put everithing in a list
+sub readSeqFile {
+	my $file = shift;
+	
+	open(DATA, $file) or die ("Could not open $file!");
+	my @tmpData= <DATA>;
+	close(DATA);
+	
+	my ($newDataRef, $removedDataRef) = MakeNewDataFile(\@tmpData);
+
+	if($DEBUG) {
+		print "DEBUG: The removed sequences were;\n";
+		foreach my $seq (@$removedDataRef) {
+	        print "$seq" if ($seq =~ m/^>.*/);
+		}
+	}
+	
+	#Save Data into temporary datafile
+	open(DATA, ">$TMPDATAFILE") or die "Could not make temporary data file\n";
+	print DATA @$newDataRef;
+	close(DATA);
+	
+	return $newDataRef;
+}
+
+#copy a file in a new file
+sub copyFile {
+	my $inputFile = shift;
+	my $outputFile = shift;
+    die "Could not copy '$inputFile': $!\n" unless -f $inputFile;
+    system("/bin/cp",$inputFile,$outputFile);
+	
+	return $outputFile;
+}
+
+#read the parameters in param file
+sub readParamFile {
+	my ($erpinPath,$distpinPath,$mf2fastaPath);
+	
+	open (PARAM, $paramfile) or die "Unable to open $paramfile";
+	while() {
+		my $line = <PARAM>;
+		if ($line =~/^>ERPIN_PATH$/) { $erpinPath = <PARAM>;next;}
+		elsif ($line =~/^>DISTPIN$/) {$distpinPath = <PARAM>;next;}
+		elsif ($line =~/^>MF2FASTA$/) {$mf2fastaPath = <PARAM>;next;}
+		elsif ($line =~/^END$/) {last;}
+	}
+	close PARAM;
+	chomp($erpinPath);chomp($distpinPath);chomp($mf2fastaPath);
+	return ($erpinPath,$distpinPath,$mf2fastaPath);
+}
+
+############################
+## WARNING => INFORMATION ##
+############################
+#AFTER THIS LINE, FOLLOWING FUNCTION DO NOT USE GLOBAL VARIABLES ANYMORE
+
+#########################
+## MAKEMODEL FUNCTIONS ##
+#########################
+
+#Get sequences from erpin output file
+sub GetSeqFromOutputFile {
+	my ($lowerPerCutOff,$upperPerCutOff,$Rdata) = @_;
+	
+	#locals variable
+	my $header = "";
+	my $Rseqs           = {};
+	my @eValueOrder;
+	my @originalOrder;
+	my (%dir,%start,%end,%eValue,%reverseKey) = ((),(),(),(),());
+	my ($arrayCounter,$countera,$counterb)    = (0,0,0); 
+	
+	foreach my $line (@$Rdata) {
+		chomp($line);
+	
+		if($line =~ m/>(.*)/) {
+			$arrayCounter = 0 if $1 ne (defined($header) ? $header : "");
+			$header = $1;
+			next;
+		}
+		elsif(!defined($header)) { next; }
+		elsif($line =~ m/(FW|RC)\s+(\d+)\s+([\d]+)\.\.([\d]+)\s+([\d\.]+)\s+([\d\.e\-\+]+)$/) { 
+			# FW   1     825..948      109.15  1.46e-36
+			$countera++;
+			push @{$dir{$header}},      $1;
+			push @{$start{$header}},    $3;
+			push @{$end{$header}},      $4;
+			
+			if( defined( $reverseKey{"$arrayCounter<->$1<->$header"} ) ) {
+				print YELLOW,"DEBUG $countera: $arrayCounter<->$1<->$header has already been entered!\n" , RESET;
+			}
+			else {
+				$reverseKey{"$arrayCounter<->$1<->$header"}  = $6;
+				if($DEBUG) {
+					print YELLOW,"DEBUG $countera: $arrayCounter<->$1<->$header- $6\n", RESET;
+				}
+			}
+			
+			push @originalOrder, "$arrayCounter<->$1<->$header";
+			push @{$eValue{$header}},   $6;
+			$arrayCounter++;
+			next;
+		}
+		elsif(defined($header) and $line =~ /^$/){ $header = undef; next; }
+		else { push @{$Rseqs->{$header}}, $line; }
+	}
+	
+	# We must sort the order of the sequences by e-value
+	foreach my $key (sort{$reverseKey{$a} <=> $reverseKey{$b}} keys %reverseKey) {
+		$counterb++;
+		push @eValueOrder, $key;
+	}
+	
+	my $numberResults = @eValueOrder;
+	my $first = int( ( (100 - $upperPerCutOff) / 100 ) * $numberResults);
+	my $last  = int( ( (100 - $lowerPerCutOff) / 100 ) * $numberResults);
+	@eValueOrder = @eValueOrder[$first..($last-1)];
+	
+	if($DEBUG) {
+        my $string  = "DEBUG COUNTER IS $countera\n";
+           $string .= "DEBUG COUNTER IS $counterb\n";
+           $string .= "DEBUG: seqs size          = " . keys(%$Rseqs) . "\n";
+           $string .= "DEBUG: reverseKey size    = " . keys(%reverseKey) . "\n";
+           $string .= "DEBUG: eValueOrder size   = " . scalar(@eValueOrder) . "\n";
+           $string .= "DEBUG: originalOrder size = " . scalar(@originalOrder) . "\n";
+           $string .= "DEBUG: dir size           = " . keys(%dir) . "\n";
+           $string .= "DEBUG: start size         = " . keys(%start) . "\n";
+           $string .= "DEBUG: end size           = " . keys(%end) . "\n";
+           $string .= "DEBUG: evalue size        = " . keys(%eValue) . "\n";
+		print YELLOW,$string, RESET;
+	}
+	
+	return($Rseqs, \@eValueOrder, \@originalOrder, \%dir, \%start, \%end, \%eValue, $first, $last, $numberResults);
+}
+
+#get structure lines from a model file
+sub GetStructureFromModelFile {
+	my $Rmodel = shift;
+	
+	#local vars
+	my $header;
+	my $structure;
+	
+	foreach my $line (@$Rmodel) {
+		if($line =~ m/>.*/) {
+			if($line =~ m/>structure/) {
+				$header = $1;
+				next;
+			}
+			else { last; }
+		}
+		else {
+			if(!defined($structure)) {
+				$structure = $line;
+			}
+			else {
+				$structure .= $line;
+			}
+		}
+	}
+	return $structure; 
+}
+
+sub GetStructurePos {
+	my ($structure,$pos) = @_;
+	
+	die "You can't have a mask position that is greater than 99!\n" 
+        if ($pos > 99);
+	
+	my $pos1      = int($pos/10);
+	my $pos2      = int($pos%10);
+	my ($struct1, $struct2) = split /\n/, $structure;
+	my $posA      = index($struct1, $pos1);
+	my $posB      = index($struct2, $pos2, $posA);
+  
+	return $posB;
+}
+
+#get length of the structure line
+sub GetStructureLength {
+	my $structure = shift;
+	my ($struct1, $struct2) = split /\n/, $structure;
+	
+	return length($struct2);
+}
+
+sub makeReportSeq {
+	my $inSeq = shift;
+	my @maxBitLen = @_;
+	my $outSeq = "";
+	my @seqBits = split(/\./, $inSeq);
+	
+	for(my $i=0; $i<@seqBits;$i++) {
+		if($seqBits[$i] =~ m/^[\-]+$/) {
+			if($maxBitLen[$i] > 16) {
+				$outSeq .= " " x 17;
+			}
+			else {
+				$outSeq .= " " x ($maxBitLen[$i] + 1);
+			}
+		}
+		#If this is lowercase
+		elsif($seqBits[$i] =~ m/[a-z]/) {
+			$seqBits[$i] =~ s/-//g;
+			
+			my $lengthSeqBits = length($seqBits[$i]);
+			
+			if($lengthSeqBits > 16) {
+				$outSeq .= substr($seqBits[$i], 0, 3);
+				
+				if($lengthSeqBits/1000 >= 1) {
+					$outSeq .= "..(" . $lengthSeqBits  . ").." .  substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+				}
+				elsif(($lengthSeqBits/100) >= 1) {
+					$outSeq .= "..(" . $lengthSeqBits  . ")..." . substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+				}
+				else {
+					$outSeq .= "...(" . $lengthSeqBits  . ")..." .substr($seqBits[$i], $lengthSeqBits - 3, 3) . " ";
+				}
+			}
+			else {
+				my $filler;
+				
+				if($maxBitLen[$i] > 16) {
+					$filler = 16 - $lengthSeqBits;
+				}
+				else {
+					$filler = $maxBitLen[$i] - $lengthSeqBits;
+				}
+				
+				$outSeq .= $seqBits[$i] . " " . " " x $filler;
+			}
+		}
+		else {
+			$outSeq .= $seqBits[$i] . " ";
+		}
+	}
+	return $outSeq;
+}
+
+sub modifyModelSeqNew {
+  my $model               = shift;
+  my ($struct1, $struct2) = split("\n", shift);
+  my $prefixLen           = shift;
+  my $erpinMaskNums       = shift; # array ref
+
+  my %masked = map { int($_ + 0) => 1 } @$erpinMaskNums;
+
+  my @structs = (); # will contain { DOMAIN, LEN, MODELSUBS } for each substruct of the structure
+  my $prevdomain = "";
+  my $blocknum=-1; # will immediately increase to 0 in next loop
+  for (my $i=0;$i<length($model);$i++) {
+      my $domain = substr($struct1,$i+$prefixLen,1) . substr($struct2,$i+$prefixLen,1); # "01", "02" ... "99".
+      $blocknum++ if $domain ne $prevdomain;
+      $structs[$blocknum] ||= { "DOMAIN" => $domain, "LEN" => 0, "MODEL" => "" };
+      $structs[$blocknum]->{"LEN"}++;
+      $prevdomain=$domain;
+  }
+
+  my $tmp = $model; # destructively split
+  foreach my $substr (@structs) {
+      my $blocklen = $substr->{"LEN"};
+      $substr->{"MODEL"} = substr($tmp,0,$blocklen); # first $blocklen chars
+      $tmp = substr($tmp,$blocklen); # reminder
+  }
+
+  foreach my $substr (@structs) {
+      my $domain = $substr->{"DOMAIN"};
+      my $len    = $substr->{"LEN"};
+      my $model  = $substr->{"MODEL"};
+      $substr->{"NEWMODEL"} = $model; # by default, unchanged.
+
+      my $domAsInt = int($domain + 0);
+      next if exists($masked{$domAsInt}); # leave unchanged if not selected in ERPIN args
+
+      my $nodash = $model;
+      $nodash =~ s/-+//g;
+      my $numdash    = length($model)-length($nodash);
+      my $beforedash = substr($nodash,0,int(length($nodash)/2)); # first half
+      my $afterdash  = substr($nodash,length($beforedash));      # second half
+      my $newmodel   = $beforedash . ("-" x $numdash) . $afterdash;
+      $substr->{"NEWMODEL"} = $newmodel;
+   }
+
+  my $newmodel = "";
+  foreach my $substr (@structs) {
+      $newmodel .= $substr->{"NEWMODEL"};
+  }
+  return $newmodel;
+}
+
+##########################################
+# New BRACKETS System for RNAweasel      #
+##########################################
+
+sub MakeLogBracketsNew {
+    my $StructureLines = shift;
+    my $MaxLengths     = shift; # ref to array of max sizes for all elements (each <= to StructL)
+    my $ErpinMaskNums  = shift; # ref to array of selected elements
+
+    my ($struct1, $struct2) = split("\n", $StructureLines);
+    my %masked = map { int($_ + 0) => 1 } @$ErpinMaskNums;
+
+    my @structs = (); # will contain { ELEMID, LEN, MAXLEN, SYM } for each element of the structure
+    my $prevElemID = "";
+    my $elemnum=-1; # will immediately increase to 0 in next loop
+    for (my $i=0;$i<length($struct1);$i++) {
+        my $ElemID = substr($struct1,$i,1) . substr($struct2,$i,1); # "01", "02" ... "99".
+        $elemnum++ if $ElemID ne $prevElemID;
+        $structs[$elemnum] ||= { "ELEMID" => $ElemID, "LEN" => 0,  };
+        $structs[$elemnum]->{"LEN"}++;
+        $prevElemID=$ElemID;
+    }
+
+    # the @$MaxLengths array is in same order as structure elements;
+    # however the entries start at an offset with respect to the full struct.
+    my @sortedEMN = sort { $a <=> $b } @$ErpinMaskNums;
+    my $minElem = $sortedEMN[0];
+    my $offset = undef;
+    for (my $n=0;$n<@structs;$n++) {
+        my $struct = $structs[$n];
+        my $elemID = $struct->{"ELEMID"};
+        next if int($elemID+0) != $minElem;
+        $offset = $n;
+        last;
+    }
+    die "Cannot find element #$minElem in structure?\nStruct:\n$StructureLines"
+        unless defined($offset);
+    for (my $n=0;$n<@$MaxLengths;$n++) {
+        my $max = $MaxLengths->[$n];
+        $structs[$n+$offset]->{"MAXLEN"} = $max;
+    }
+
+    # Identify the selected elements and sets what characters to display
+    # for the bracket expression.
+    my %seenID = ();
+    for (my $n=0;$n<@structs;$n++) {
+        my $struct = $structs[$n];
+        my $elemID = $struct->{"ELEMID"};
+        if ($masked{int($elemID + 0)}) {
+            $struct->{"SELECTED"}="YES";  # Right now it's not used.
+        }
+        if (exists $seenID{$elemID}) {
+            $seenID{$elemID}->{"SYM"} = "[";
+            $struct->{"SYM"}          = "]";
+        } else {
+            $struct->{"SYM"}          = " ";
+            $seenID{$elemID} = $struct; # remember it for future use (for [ and ] maybe)
+        }
+    }
+
+    # Ok, we have all the info, create the bracket line.
+    my $brackets = "";
+    for (my $n=0;$n<@structs;$n++) {
+        my $struct = $structs[$n];
+        next unless exists $struct->{"MAXLEN"}; # we only show some elems
+        my $maxlen   = $struct->{"MAXLEN"};
+        my $sym      = $struct->{"SYM"} || "?";
+        my $selected = $struct->{"SELECTED"};
+        $brackets .= " " if $brackets ne "";
+        if ($selected) {
+            $brackets .= $sym x $maxlen;
+        } else {
+            # This 16 constant must match the rules in makeReportSeq()
+            $brackets .= $sym x ($maxlen < 16 ? $maxlen : 16);
+        }
+    }
+    return $brackets;
+}
+
+######################
+## Other FUNCTIONS ##
+######################
+
+##-- Methode "MakeNewDataFile"
+##-- ouvre un fichier fasta et stocke toutes les sequences dans un hash
+##-- Clé = NOM SEQUENCE --- Valeur = SEQUENCE
+##-- si 2 clés sont identiques, la 2eme clé est ignorée
+sub MakeNewDataFile {
+	my $fasta_data = shift;
+	my %headers = ();
+	my @seqs;
+	my @removedSeqs;
+	my $skipFlag = 0;
+	
+	foreach my $line (@$fasta_data) {
+		chomp($line);
+		
+		#si c'est une nouvelle entree/sequence, reconaissable par >
+		if($line =~ m/^>(.*)/) {
+			if(defined($headers{$1})) {
+				if ($DEBUG) {
+					print YELLOW,"The following sequence was already found, skipping\n$1\n", RESET;
+				}
+				# Let's keep a list of the sequences we remove
+				push @removedSeqs, ">$1\n";
+				$skipFlag = 1;
+				next;
+			}
+			else {
+				$headers{$1} = 1;
+				push @seqs, ">$1\n";
+				$skipFlag = 0;
+				next;
+			}
+		}
+		#si le flag est activé, c'est une sequence qu'on a deja
+		#on stocke alors dans le tableau des sequences a oter.
+		elsif($skipFlag) {
+			$line =~ s/\s+//g;
+			push @removedSeqs, "$line\n";
+			next;
+		} 
+		#si c'est une ligne vide, on saute
+		elsif($line =~ m/^$/) { next; }
+		#dans ce dernier cas c'est une ligne fasta normale, 
+		#on l'ajoute au tableau des sequences a conserver
+		else {
+			$line =~ s/\s+//g;
+			push @seqs, "$line\n";
+		}
+	}
+	#on renvoie les 2 tableaux : sequences conservées, sequences otées (dupliquées)
+	return(\@seqs, \@removedSeqs);
+} 
+
+#--Methode "GetSeqFromDataFile"
+#--lit une liste et renvoie un hachage de séquences
+sub GetSeqFromDataFile {
+	my $data = shift; # was @data
+	my $header;
+	my %seqs = ();
+	
+	foreach my $line (@$data) {
+		chomp($line);
+		#si la ligne est un entete, on le stocke
+		if($line =~ m/^>(.*)/) {
+			$header = $1;
+			$seqs{$header} ||= "";
+			next;
+		}
+		#si l'entete est non defini ou si la ligne est vide, on saute
+		elsif((!defined($header)) or ($line =~ m/^$/)) {next;} 
+		else {
+			$line =~ tr/a-zA-Z//cd;
+			$seqs{$header} .= $line;
+		}
+	}
+	#on renvoie le hash qui contient les entete en cle et les sequences en valeurs
+	return \%seqs;
+}
+
+sub Remove_Repeated_Sequences {
+	my ($command,$modifiedModel_path) = @_;
+
+	if(!system($command) ) {
+		print GREEN,"Successfully removed repeated sequences from training set\n\n", RESET;
+	}
+	else { die("Impossible to remove repeated sequences via Distpin\n"); }
+
+	return $modifiedModel_path;
+}
+
+sub Remove_Seq_By_Phylo_Distance {
+	my ($command,$modifiedModel_path) = @_;
+	
+	print GREEN,"Calculating distance.....\n", RESET;
+	
+	if(!system($command) ) {
+		print GREEN,"Successfully removed sequences using distance method\n", RESET;
+	}
+	else {
+		print RED,"Your cutoff selection has left no sequences!\n", RESET;
+		exit(1);
+	}
+	return $modifiedModel_path;
+}
+
+#################################
+##-- FONCTIONS UTILES STEP 1 --##
+#################################
+#--methode "ParseErpinArgs"
+sub ParseErpinArgs {
+# erpin giD.epn test.seq 2,21 -add 2 3 -add 4 5 6 8 -add 9 -add 11 12 13 14 15 -add 17 18 20 21 -logzero -2 -cutoff 7 13 22 39 52
+	my @command = @_;
+	my $numbers = [];
+    my @cutoffVal;
+	my $flag = 0;
+	
+    my $count = -1;
+	foreach my $bit (@command) {
+        $count++;
+		chomp($bit);
+		if($bit =~ m/^-.*$/) {
+			if   ($bit =~ m/^-add$/)    { $flag = 1;}
+            elsif($bit =~ m/^-cutoff$/) {
+                $flag = 2; 
+                splice(@ERPINARGS,$count,1);
+                $count--;
+            }
+			else { $flag = 0;}
+			next;
+		}
+		push (@$numbers,$bit)   if ( ($flag == 1) and ($bit =~ m/^\d+$/));
+        if ( ($flag == 2) and ($bit =~ /^\d+(\.\d+)?$/)) {
+            push (@cutoffVal,$bit);
+            splice(@ERPINARGS,$count,1);
+            $count--;
+        }
+	}
+    my $cutoff  = join(" ",@cutoffVal);
+       @$numbers = sort { $a <=> $b } @$numbers;
+    
+	return ($numbers, $cutoff);
+}
+
+sub DefineCutoffWithPourcent {
+    my ($model_file,$FileForCut,$erpinArg,$cutoff) = @_;
+
+    open(CUTOFF, ">$FileForCut") or die ("Could not open file for cutoff!\n");
+    print CUTOFF ">SeqForCutoff\nT\n";
+    close(CUTOFF);
+    
+    my ($erpinOut,$erpinErr) = ("$FileForCut.out","$FileForCut.err");
+    &RunErpin($FileForCut,$model_file,$erpinArg,$erpinOut,$erpinErr);
+    my $BestCutoff   = &DefineBestcutoff($erpinOut);
+    my $newCutoff    = " ";
+    my $HaveNegValue = 0;
+    foreach my $b_cutoff (@$BestCutoff) {
+        if ($b_cutoff < 0) {
+            $HaveNegValue = 1;
+            print "Cutoff values defined by erpin contain negative value '$b_cutoff', uses values of user.\n";
+            last;
+        }
+        my $PourcentCutoff = ( $b_cutoff * $POURCENT) / 100;
+        $PourcentCutoff = arrondi($PourcentCutoff,1);
+        $newCutoff .= "$PourcentCutoff ";
+    }
+    $newCutoff = $cutoff if $HaveNegValue;
+    return $newCutoff;
+}
+
+sub RunErpin {
+    my ($nr_genome,$nr_model,$erpinArg,$erpinOut,$erpinErr,$Item_num,$cutoff) = @_;
+    
+    print STDERR "Running erpin for item $Item_num...\n" if $Item_num;
+    
+    my $ret = "";
+    if (defined($cutoff)) {
+        print STDERR "erpin $nr_model $nr_genome @$erpinArg -cutoff $cutoff\n" if $DEBUG;
+        $ret = system("erpin $nr_model $nr_genome @$erpinArg -cutoff $cutoff > $erpinOut 2> $erpinErr");
+    }
+    else {
+        print STDERR "erpin $nr_model $nr_genome @$erpinArg\n" if $DEBUG;
+        $ret = system("erpin $nr_model $nr_genome @$erpinArg > $erpinOut 2> $erpinErr");
+    }
+    
+    if (($ret >> 8) > 1 || (-s "$erpinOut" == 0) ) {
+        print STDERR "There was an error running 'erpin'.\n";
+        print STDERR "Content of STDERR output:\n";
+        system("cat",$erpinErr);
+        exit 0; # cleanup will occur in END {}
+    }
+}
+
+sub DefineBestcutoff {
+    my $OutFile = shift;
+    my $BestCutoff = [];
+    
+    my $ifh = new IO::File "<$OutFile";
+    while (my $line = <$ifh>) {
+        next if $line !~ m/^cutoff:\s+(.+)/;
+        push(@$BestCutoff,$1);
+    }
+    return $BestCutoff;
+}
+
+sub arrondi {
+    my ($n,$precision) = @_;    
+    return int((10**$precision)*$n + 0.5) / (10**$precision);
+}
+
+sub CreateFileForCutoff {
+    my $FileForCut = "$TMP_DIR/for_cutoff";
+    open(CUTOFF, ">$FileForCut") or die ("Could not open file for cutoff!\n");
+    print CUTOFF ">SeqForCutoff\nT\n";
+    close(CUTOFF);
+    return $FileForCut;
+}
+
+#################################
+##-- FONCTIONS UTILES STEP 2 --##
+#################################
+
+#--Methode "CounteModelsInFile"
+sub CounteModelsInFile {
+	my $fileName = shift;
+	return ((`cat $fileName |grep ">"| wc -l`) -1);
+}
+
+sub RemoveStructureLines {
+	my $filename = shift;
+	my $printall = 0;
+	my $filedata;
+	
+	open (FILE,$filename) or die ("Could not open $filename");
+	
+	while (my $line = <FILE>) {
+		if ($printall) {$filedata .= $line;next;}
+		if ($line =~ m/^>structure/) {next;}
+		if ($line =~ m/^>(.*)/) 
+		{ $printall = 1;$filedata .= $line; }
+	}
+	close (FILE);
+	return $filedata;
+}
+
+##########################################
+# Interface with User for RNAweasel      #
+##########################################
+# Last Revision : 24/07/2006             #
+# By Yann Lienhart                       #
+##########################################
+
+#Check if the file in argument exist
+sub checkFile {
+	my $File = shift;
+	die "Sequence file $File does not exist\n" if (!-e $File );
+}
+
+#Check if the related programs like Erpin & distpin can be found
+sub checkRelatedProgs {
+	my ($ProgPath,$ProgName) = @_;
+	
+    die "Unable to find $ProgName at $ProgPath. Please ask your Systems Administrator to check this out\n"
+        if (!-e $ProgPath);
+}
+
+#Erpin error when no results
+sub noErpinResultError {
+    my $to_print  = "****************************************\n";
+       $to_print .= "*  There was a problem running Erpin   *\n";
+       $to_print .= "*     It did not produce an output     *\n";
+       $to_print .= "* Run Erpin directly for error messages*\n";
+       $to_print .= "****************************************\n"; 
+	print RED,$to_print, RESET;
+	exit(1);
+}
+
+sub MakeStrippedModel {
+    my $modelfile     = shift;
+    my $newfile       = shift;
+    my $erpinMaskNums = shift;  # just the numbers of the elements selected with -add in erpin
+    my $region        = shift;  # "1,21" or "-3,17" etc like in erpin.
+
+    my ($RegLeft,$RegRight) = split(/,/,$region);
+
+    my $infh = new IO::File "<$modelfile"
+        or die "Cannot read from training set '$modelfile': $!\n";
+    my @model = <$infh>;
+    $infh->close();
+
+    die "Training set '$modelfile' is not in correct format?!? Expected \">structure\".\n"
+        unless $model[0] =~ m#^>structure#;
+    my $struct1 = $model[1];
+    my $struct2 = $model[2];
+    chomp $struct1;
+    chomp $struct2;
+
+    my %masked = map { $_ => 1 } @$erpinMaskNums;
+
+    # We WILL need to adjust the "region" argument of erpin (see $region above).
+    # To do so, before we strip the model, let's find out where the region supplied
+    # by the user really is.
+    my $origRegLeftPos  = &FindElementPos($struct1,$struct2,$RegLeft);
+    my $origRegRightPos = &FindElementPos($struct1,$struct2,$RegRight);
+
+    # Identify how many characters to strip on LEFT side
+    my $stripL = undef;
+    for (my $i = 0; $i < length($struct1);$i++) {
+        my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+        $el = int($el+0);
+        next unless $masked{$el};
+        $stripL = $i;
+        last;
+    }
+    die "Cannot find how many characters to strip on left side of structure?!?\n"
+        unless defined $stripL; # should never happen
+
+    # Identify how many characters to strip on RIGHT side
+    my $stripR = undef;
+    for (my $i = 0; $i < length($struct1);$i++) {
+        my $el = substr($struct1,-($i+1),1) . substr($struct2,-($i+1),1);
+        $el = int($el+0);
+        next unless $masked{$el};
+        $stripR = $i;
+        last;
+    }
+    die "Cannot find how many characters to strip on right side of structure?!?\n"
+        unless defined $stripR; # should never happen
+
+    # Allright, now dump a new version of the training set with leading
+    # and trailing characters stripped away.
+    my $outfh = new IO::File ">$newfile"
+        or die "Cannot write to new taining set file '$newfile': $!\n";
+    foreach my $line (@model) {
+        chomp $line;
+        if ($line !~ m#^>#) {
+            substr($line,-$stripR)=""  if $stripR;
+            substr($line,0,$stripL)="" if $stripL;
+        }
+        print $outfh $line,"\n";
+    }
+    $outfh->close();
+
+    my $origStructLen = length($struct1); # remember original length
+
+    # Construct stripped structure (and remember stripped elements)
+    my ($L_struct,$R_struct) = ("","");
+    if ($stripR) {
+        $R_struct = substr($struct1,-$stripR) . "\n" . substr($struct2,-$stripR);
+        substr($struct1,-$stripR)="";
+        substr($struct2,-$stripR)="";
+    }
+    if ($stripL) {
+        $L_struct = substr($struct1,0,$stripL) . "\n" . substr($struct2,0,$stripL);
+        substr($struct1,0,$stripL)="";
+        substr($struct2,0,$stripL)="";
+    }
+
+    # Recompute the 'region' for erpin, if necessary. First the easy
+    # case, the RIGHT side, which is always a + number.
+    if ($origRegRightPos >= $origStructLen - $stripR) { # must be >= not simply > !
+        $RegRight = substr($struct1,-1,1) . substr($struct2,-1,1); # last character of each
+        $RegRight = int($RegRight+0);
+    }
+
+    # The left side is a little bit more complex, as we might need to
+    # supply a '-' sign to erpin.
+    if ($origRegLeftPos < $stripL) { # must be < and not <=.
+        $RegLeft = substr($struct1,0,1) . substr($struct2,0,1); # first character of each
+        $RegLeft = int($RegLeft+0);
+        # Scan to see if element has another component later on the struct
+        my ($foundOther,$foundSame) = (0,0);
+        for (my $i=1;$i < length($struct1);$i++) {
+            my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+            $el = int($el+0);
+            $foundOther = 1 if $el != $RegLeft;
+            $foundSame  = 1 if $foundOther && $el == $RegLeft;
+        }
+        $RegLeft = "-" . $RegLeft if $foundOther && $foundSame;
+    }
+    my $newregion = "$RegLeft,$RegRight";
+    return ($newregion,$L_struct,$R_struct);
+}
+
+# Returns the position of the structure where we can find
+# the leftmost char of $el or the rightmost char (depending
+# on whether or not $el is negative or positive).
+sub FindElementPos {
+    my ($struct1,$struct2,$element) = @_;
+    # Neg: we search from left to right; Pos: right to left.
+
+    my $searchL2R = $element < 0 ? 1 : 0;
+    $element = abs($element);
+    
+    my ($start,$stop,$dir) = (0,length($struct1),1);
+    ($start,$stop,$dir) = ($stop-1,-1,-1) if ! $searchL2R; # We search from the RIGHT to LEFT.
+
+    for (my $i=$start;$i != $stop; $i += $dir) { # this loop handle both directions
+        my $el = substr($struct1,$i,1) . substr($struct2,$i,1);
+        $el = int($el+0);
+        return $i if $el == $element;
+    }
+    die "Cannot find element #$element in struct:\n$struct1\n$struct2\n";
+}

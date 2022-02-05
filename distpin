@@ -1,0 +1,634 @@
+#!/usr/bin/perl
+
+##############################################################################
+#
+#                                 distpin
+#
+# DESCRIPTION:
+#
+# Known issues: 
+#
+##############################################################################
+
+##############################################################################
+#                                                                            #
+#                       CONFIDENTIAL & PROPRIETARY                           #
+#       Nothing herein is to be disclosed in any way without the prior       #
+#                  express written permission of David To                    #
+#                                                                            #
+#               Copyright 2004 David To, All rights reserved.                #
+#                                                                            #
+##############################################################################
+#    $Id: distpin,v 1.18 2009/08/20 19:40:45 nbeck Exp $
+#
+#    $Log: distpin,v $
+#    Revision 1.18  2009/08/20 19:40:45  nbeck
+#    Cleaned old code and replaced puzzle by dnadist.
+#
+#    Revision 1.17  2007/02/01 19:25:06  riouxp
+#    Made sure sequence data fed to puzzle are in UPPERCASE, otherwise
+#    puzzle crashes.
+#
+#    Revision 1.16  2007/01/29 20:31:37  riouxp
+#    Esthetic changes to progression messages, as requested by Franz.
+#
+#    Revision 1.15  2007/01/29 19:46:59  riouxp
+#    Fixed check.
+#
+#    Revision 1.14  2007/01/29 19:43:55  riouxp
+#    Added checks for proper input model file.
+#
+#    Revision 1.13  2007/01/29 19:38:02  riouxp
+#    Added kludge to allow handling properly model files that
+#    have multiple entries with the same name.
+#
+#    Revision 1.12  2006/02/25 00:34:57  dto
+#    Removed commented out code
+#
+#    Revision 1.11  2006/02/01 21:05:37  dto
+#    Added debugging
+#
+#    Revision 1.10  2006/01/27 01:40:29  dto
+#    Fixed Usage
+#    Move END code
+#    Print out sequences that are removed.
+#
+#    Revision 1.9  2005/12/02 18:41:31  dto
+#    Fixed banner message
+#
+#    Revision 1.8  2005/12/02 18:41:00  dto
+#    Fixed model stuff
+#    Fixed version number
+#
+#    Revision 1.7  2005/12/02 18:14:52  dto
+#    Changed method for removing sequences from model - will only remove a % of sequences
+#    given the cut off, rather than a all sequences repeated in the % of pairs
+#
+#    Revision 1.6  2005/12/02 15:33:28  dto
+#    Fixed progress bar
+#
+#    Revision 1.5  2005/12/02 15:32:15  dto
+#    Added checking for existance of input file
+#    Fixed bug with translation table
+#    Fixed but with usage
+#
+#    Revision 1.4  2005/12/02 15:01:29  dto
+#    Added sleep of 1 second before puzzle
+#    Added translation table output
+#    Added remove repeated sequence only function
+#    Added Puzzle file saving function
+#
+#    Revision 1.3  2005/12/01 21:52:58  dto
+#    Fixed parameters of Puzzle
+#
+#    Revision 1.2  2005/11/30 22:10:40  dto
+#    Added mask values to Usage
+#
+#    Revision 1.1  2005/11/30 22:03:17  dto
+#    Added programme to filter eprin models based on distances
+#
+#
+
+require 5.00;
+use strict;
+use warnings;
+use vars qw( $VERSION $RCS_VERSION );
+use Cwd;
+use File::Basename;
+use File::Copy;
+use File::Path;
+use Getopt::Std;
+use IO::File;
+use Socket;
+use POSIX qw{strftime};
+use Term::ANSIColor qw(:constants);
+$Term::ANSIColor::AUTORESET = 1;
+
+
+my $TRUE   = 1;
+my $FALSE  = 0;
+my $PID    = $$;
+my $TMPDIR = "/tmp";
+
+# Default umask
+umask 027;
+
+# Programme's name and version number.
+$RCS_VERSION='$Id: distpin,v 1.18 2009/08/20 19:40:45 nbeck Exp $';
+($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+
+# Get login name.
+my $USER=getpwuid($<) or getlogin or die "Can't find USER from environment!\n";
+
+# Catch Interupt signals
+$SIG{'INT'}  = \&SigCleanup;
+$SIG{'TERM'} = \&SigCleanup;
+$SIG{'HUP'}  = \&SigCleanup;
+$SIG{'QUIT'} = \&SigCleanup;
+$SIG{'PIPE'} = \&SigCleanup;
+$SIG{'ALRM'} = \&SigCleanup;
+
+# Redirecting STDERR to /dev/null
+$| = 1;
+open(STDERR, ">/dev/null");
+
+# Define variables
+my $GBLOCKS       = "/share/supported/apps/gblocks/bin/gblocks";
+my $ALI2PUZ       = "/share/supported/apps/ogmp/bin/ali2puz";
+my $PUZZLE        = "/share/supported/apps/tree-puzzle/bin/puzzle";
+my $DNADIST       = "/share/supported/bin/dnadist";
+my $lowerCutoff   = 0;
+my $INPUTMODEL;
+my $OUTPUTMODEL;
+my $SAVEPUZZLEFILEFLAG    = $FALSE;
+my $JUSTREMOVEREPEATSFLAG = $FALSE;
+my $PUZZLEFILE;
+my $TRANSLATIONTABLEFLAG  = $FALSE;
+my $TRANSLATIONTABLE;
+my @model;
+my @strippedModel;
+my %headerLookup  = ();
+my $headerCounter = 1;
+my $structureLine1;
+my $structureLine2;
+my %removeSeq = ();
+my %foundSeq = ();
+# Get the options passed at the command prompt
+my %options=();
+getopts("hi:l:o:p:rt:", \%options);
+if(defined($options{h})) {
+  Usage();
+  exit(1);
+}
+
+if(defined($options{i})) {
+  $INPUTMODEL=$options{i};
+  if(!-e $INPUTMODEL) {
+    print RED "Your input file \"$INPUTMODEL\" does not exist!\n";
+    die();
+  }
+}
+else {
+  print "You did not supply an input file name\n";
+  die();
+}
+if(defined($options{o})) {
+  $OUTPUTMODEL=$options{o};
+}
+else {
+  print "You did not supply an output file name\n";
+  die();
+}
+if(defined($options{r})) {
+  $JUSTREMOVEREPEATSFLAG = $TRUE;
+}
+if(defined($options{l})) {
+  $lowerCutoff=$options{l};
+}
+
+if(defined($options{p})) {
+  $SAVEPUZZLEFILEFLAG = $TRUE;
+  $PUZZLEFILE         = $options{p};
+}
+
+if(defined($options{t})) {
+  $TRANSLATIONTABLEFLAG = $TRUE;
+  $TRANSLATIONTABLE     = $options{t};
+}
+
+
+if(@ARGV < 1) {
+  Usage();
+  print("You have not supplied the correct number of arguments.\n");
+  die;
+}
+
+# Grab arguments from command line
+unless (-d "$TMPDIR/distpin${PID}") { mkdir("$TMPDIR/distpin${PID}",0755); }
+my @maskNumbers   = @ARGV;
+my $BASE          = basename($INPUTMODEL);
+
+my $GBLOCKSIN     = "$TMPDIR/distpin${PID}/gblocksin";
+my $GBLOCKSOUT    = "$TMPDIR/distpin${PID}/$GBLOCKSIN.-gb";
+my $GBLOCKSHTML   = "$TMPDIR/distpin${PID}/$GBLOCKSOUT.htm";
+my $ALI2PUZIN     = "$TMPDIR/distpin${PID}/${PID}.ali";
+my $ALI2PUZOUT    = "$TMPDIR/distpin${PID}/${PID}.puz";
+my $DNADISTANCE   = "$TMPDIR/distpin${PID}/outfile";
+my $INFILE        = "$TMPDIR/distpin${PID}/infile";
+my $DNACOMMAND    = "$TMPDIR/distpin${PID}/dnadistcommand";
+
+##################################
+#   M A I N   P R O G R A M M E  #
+##################################
+print BOLD "      #######################################\n"  ;
+print BOLD "          Distance Erpin Version $VERSION   \n"      ;
+print BOLD "      #######################################\n\n";
+
+
+print BLUE "1. Removing non-selected masked sequences:......\n";
+# Input erpin model file
+@model = OpenFile($INPUTMODEL);
+
+die "This file '$INPUTMODEL' doesn't seem to be a Erpin model file?!?\n"
+    unless @model && $model[0] =~ m#^>structure#;
+
+# 2. Remove the structure from the file (assume structure is in the first 3 lines)
+@model = @model[1..(@model-1)];
+chomp($structureLine1 = shift(@model));
+chomp($structureLine2 = shift(@model));
+
+# KLUDGE because this code does not handle well model files with duplicate headers.
+# We basically add some special characters to a header to make them all distinct.
+&AddDifferentiatingHeaders(\@model);
+
+my %sequences;
+my $title = "";
+
+foreach my $line (@model) {
+  if($line =~ m/^>.*/) {
+    push @strippedModel, $line;
+    $title = $line;
+    next;
+  }
+  $sequences{$title} = $line;
+  my $tmpSeq = "";
+  for(my $i=0;$i<length($structureLine1);$i++) {
+    my $maskvalue = getStructureValue(substr($structureLine1, $i, 1), substr($structureLine2, $i, 1));
+    foreach my $selectedValue (@maskNumbers) {
+      if($maskvalue == $selectedValue) {
+        $tmpSeq .= substr($line, $i, 1);
+        last;
+      }
+    }
+  }
+  $tmpSeq .= "\n";
+  push @strippedModel, $tmpSeq;
+}
+
+print BLUE "2. Removing repeated sequences:.................\n";
+
+my $removedSeqCount = 0;
+my $totalSeq = scalar(@strippedModel)/2;
+# Removing Repeated sequences
+my @removeList;
+for(my $i=0;$i<@strippedModel;$i++) {
+  for(my $j=0;$j<@strippedModel;$j++) {
+    next if ($i==$j);
+    next if (($strippedModel[$i] =~ m/^>.*/) or ($strippedModel[$j] =~ m/^>.*/));
+    next if ($strippedModel[$i] ne $strippedModel[$j]);
+    $removedSeqCount++;
+    my $header1Pos = $i - 1;
+    my $header2Pos = $j - 1;
+    push @removeList, $strippedModel[$header2Pos];
+    splice(@strippedModel, $j--, 1);
+    splice(@strippedModel, $j, 1);
+  }
+}
+
+if($removedSeqCount == 0) {
+  print YELLOW "There were no repeated sequences!\n";
+}
+else {
+  print MAGENTA "Removed $removedSeqCount repeated sequences out of $totalSeq\n";
+  print MAGENTA "These sequences were removed:\n";
+  foreach my $remove (@removeList) { print MAGENTA "$remove"};
+}
+
+
+for(my $i=0;$i<@strippedModel;$i++) {
+  if($model[$i] =~ m/^>.*/) { # This is a header line
+    my $newHeader = sprintf(">%010d\n", $headerCounter);
+    $headerLookup{$newHeader} = $strippedModel[$i];
+    $strippedModel[$i] = $newHeader;
+    $headerCounter++;
+  }
+}
+
+if($TRANSLATIONTABLEFLAG) {
+  open(TT, ">$TRANSLATIONTABLE") or die "Could not create translation table file\n";
+  foreach my $key (sort keys %headerLookup) {
+    print TT $key . ": " . $headerLookup{$key} . "\n";
+  }
+  close(TT);
+}
+
+if(!$JUSTREMOVEREPEATSFLAG) {
+  # Make a new fasta file for next stage.
+  if(SaveFile($GBLOCKSIN, @strippedModel)) {
+  }
+  else {
+    print "Fail...\n";
+    die "Unable to create new training set\n";
+  }
+  
+  # Make sure the input is fasta, and the output is fasta
+  # Open the output file from Gblocks
+  print BLUE "3. Formatting sequences for dnadist:..........................\n";
+  
+  my @gblocks = OpenFile($GBLOCKSIN);
+  my @gblocksOut;
+  push @gblocksOut, "#\n#";
+  for(my $i=0;$i<@gblocks;$i++) {
+    if($gblocks[$i] =~ m/^>.*/) {
+      push @gblocksOut, "\n";
+      push @gblocksOut, $gblocks[$i];
+    }
+    else {
+      chomp($gblocks[$i]);
+      $gblocks[$i] =~ s/ //g;
+      push @gblocksOut, uc($gblocks[$i]);
+    }
+  }
+  push @gblocksOut, "\n";
+  my $gblocksSize = @gblocksOut;
+  if($gblocksSize <= 2) {
+    print "\n\nYour data file for ali2puz is empty\n";
+  }
+  if(SaveFile($ALI2PUZIN, @gblocksOut)) {
+  }
+  else {
+    print "Fail...\n";
+    die "Unable to create new Puzzle file\n";
+  }
+  
+  # use ali2puz to convert the file to puzzle format
+  if(!system("$ALI2PUZ $ALI2PUZIN $ALI2PUZOUT 2>1& > /dev/null")) {
+  }
+  else {
+    print "Fail...\n";
+    die "Unable to run Ali2Puzzle\n";
+  }
+  
+  sleep 1 while ( !(-e $ALI2PUZOUT) );
+  
+  my @Ali2puz = OpenFile($ALI2PUZOUT);
+  open(INFILE, ">$INFILE") or die "Could not make $INFILE\n";
+  foreach my $line (@Ali2puz) {
+    print INFILE $line;
+  }
+  close(INFILE);
+  
+  # Run Puzzle
+  print BLUE "4. Running dnadist:..............................\n";
+  
+  my $CURRENTDIR = getcwd();
+  chdir "$TMPDIR/distpin${PID}";
+  open(DNACOMMAND, ">$DNACOMMAND") or die "Could not make command file for dnadist\n";
+  print DNACOMMAND "D\nD\nG\nY\n";
+  close($DNACOMMAND);
+  
+  if(!system("$DNADIST < $DNACOMMAND > /dev/null")) {
+  }
+  else {
+    print RED "Fail...\n";
+    die "Unable to run dnadist\n";
+  }
+  chdir "$CURRENTDIR";
+  
+  # Open the distance table
+  print BLUE "5. Opening Distance table.......................\n";
+  
+  my @distanceFile = OpenFile($DNADISTANCE);
+  my $distanceTableRef;
+  my %distanceTable;
+  if(($distanceTableRef = ReadDistanceTable(@distanceFile))) {
+    %distanceTable = %$distanceTableRef;
+  }
+  else {
+    print "Fail...\n";
+    die "Unable to run read distance table\n";
+  }
+  
+  # Make a list of sequences to remove
+  my $combi         = MakeCombination(\%distanceTable);
+  my $maxCutSeqNum  = int(($lowerCutoff/100) * keys(%headerLookup));
+  
+  my $nb_tot = keys(%headerLookup);
+  print "nb_tot : $nb_tot maxCut : $maxCutSeqNum\n";
+  my $cutSeqCounter = 0;
+  
+  foreach my $header (sort {$combi->{$a} <=> $combi->{$b} } keys %$combi){
+      my ($h1, $h2) = $header =~ m/^(\d+)\-(\d+)/;
+      
+      if(defined($foundSeq{$h1})) {
+         if(!defined($removeSeq{$h1})) {
+           $removeSeq{$h1} = $TRUE;
+	       print "DEBUG: removing sequence $h1\n";
+           $cutSeqCounter++;
+         }
+      }
+      else {
+        $foundSeq{$h1}  = $TRUE;
+      }
+      
+      last if($maxCutSeqNum <=$cutSeqCounter);
+      
+      if(defined($foundSeq{$h2})) {
+        if(!defined($removeSeq{$h2})) {
+          $removeSeq{$h2} = $TRUE;
+	      print "DEBUG: removing sequence $h2\n";
+          $cutSeqCounter++;
+        }
+      }
+      else {
+        $foundSeq{$h2}  = $TRUE;
+      }
+      last if($maxCutSeqNum <=$cutSeqCounter);
+    }
+  
+  if (keys %removeSeq == keys %headerLookup) {
+    exit(1);
+  }
+}
+
+# Making New Model
+open(OUTPUT, ">$OUTPUTMODEL") or die "Could not open output file \"$OUTPUTMODEL\"\n";
+print OUTPUT ">structure\n$structureLine1\n$structureLine2\n";
+ 
+my $nb_rem = keys(%removeSeq);
+my $maxCutSeqNum  = int(($lowerCutoff/100) * keys(%headerLookup));
+my $per_rem = $nb_rem ? int(($lowerCutoff * $nb_rem)/$maxCutSeqNum) : 0;
+
+print "Only ${nb_rem}seq was removed (xxx) too many distant sequences.\n" if $nb_rem < $maxCutSeqNum && $nb_rem;
+
+foreach my $header (sort keys %headerLookup) {
+  my $key = $header;
+  chomp($key); 
+  $key =~ s/>//g;
+  my $extendedHeader = $headerLookup{$header};
+  my $origHeader     = &RemoveDifferentiatingHeader($extendedHeader); # KLUDGE
+  
+  if(!defined($removeSeq{$key})) {
+    print OUTPUT $origHeader;
+    print OUTPUT $sequences{$extendedHeader};
+  }
+  else {
+    print "Removing: $key, $origHeader";
+  }
+}
+close (OUTPUT);
+
+#   Tell user where files are
+print BLUE "New Training set was saved in:      ";
+print YELLOW "$OUTPUTMODEL\n";
+
+if($TRANSLATIONTABLEFLAG) {
+  print BLUE "Translation table was saved in: ";
+  print YELLOW "$TRANSLATIONTABLE\n";
+}
+if($SAVEPUZZLEFILEFLAG) {
+  print BLUE "Puzzle file was saved in:       ";
+  print YELLOW "$PUZZLEFILE\n";
+}
+
+exit 0;
+
+###############
+# Subroutines #
+###############
+
+sub AddDifferentiatingHeaders {
+    # Add a hexadecimal counter at the begining of each header
+    # line, with "!" signs. e.g.  ">allo" becomes  ">!91c!allo".
+    # If routine changed, modify RemoveDifferentiatingHeader() too.
+    my $textfile = shift; # array of text lines
+    my $counter = 0;
+    for (my $n=0;$n < @$textfile;$n++) {
+        my $line = $textfile->[$n];
+        next unless $line =~ m#^>#;
+        substr($line,0,1) = sprintf(">!%04x!",$counter++);
+        $textfile->[$n]=$line;
+    }
+}
+
+sub RemoveDifferentiatingHeader {
+    # Undoes what AddDifferentiatingHeaders() for a single string.
+    # If routine changed, modify AddDifferentiatingHeaders() too.
+    my $header = shift;
+    $header =~ s/^>![a-fA-F0-9]{4}!/>/;
+    return $header;
+}
+
+sub OpenFile {
+  my $file = shift;
+  open(IN, $file);
+  my @data = <IN>;
+  my $lines = @data;
+  close(IN);
+  return @data;
+}
+
+sub SaveFile {
+  my $file = shift;
+  my @data = @_;
+  open(OUT, ">$file") or return $FALSE;
+  print OUT @data;
+  close(OUT);
+  return $TRUE;
+}
+
+sub ReadDistanceTable {
+  my @data = @_;
+  my @columns;
+  my $remainder;
+  my %distanceTable = ();
+  
+  my ($seqNum)= shift(@data) =~ m/^\s*(\d+)/;
+  $remainder = $seqNum + 1;
+  # Read all numbers (headers and distances) into one large one dimensional array
+  foreach my $line (@data) {
+    chomp($line);
+    $line =~ s/\s+/ /g;
+    my @tmp   = split(" ", $line);
+    my $count = @tmp;
+    $remainder -= $count;
+    push @columns, @tmp;
+    if($remainder == 0) {
+      $remainder = $seqNum + 1;
+      next;
+    }
+  }
+
+  # Pull out all distances and place into a hash of hash data structure,
+  # searched by sequence header. ie $distanceTable{header1}{header2}
+  for(my $i=0;$i<(@columns);$i++){
+    my $mod = ($i % ($seqNum + 1));
+    my $div = int($i / ($seqNum + 1));
+    next if ( $mod == 0 );
+    $distanceTable{$columns[($div)*($seqNum + 1)]}{$columns[($mod-1)*($seqNum + 1)]} = $columns[$i];
+  }
+  return \%distanceTable;
+}
+
+sub getStructureValue {
+  my ($a,$b) = @_;
+  my $c = ($a * 10)+ $b;
+  return $c;
+}
+
+
+sub Usage {
+  print "Usage: $0 [-h -i <inputfile> -o <outputfile> -l <lowercut off %> -p <newpuzzlefile> -r -t <translationtablefile>] <mask values>\n";
+  print "\t-h   Help\n" .
+        "\t-i   Input File Name\n" .
+	"\t-o   Output File Name\n" .
+	"\t-l   Lower Cutoff %\n".
+	"\t-p   New Puzzle File Name\n".
+	"\t-r   Just remove repeated sequences\n".
+	"\t-t   Translationtable File Name\n";
+}
+
+sub SigCleanup { # private
+  die "\nExiting: received signal \"" . $_[0] . "\".\n";
+  # Note that some cleanup will be performed in the END block at this point.
+}
+
+sub CleanUp {
+    unlink $GBLOCKSIN;
+    unlink $GBLOCKSOUT;
+    unlink $GBLOCKSHTML;
+    unlink $ALI2PUZIN;
+    unlink $ALI2PUZOUT;
+    unlink $DNADISTANCE;
+    unlink $INFILE;
+    unlink $DNACOMMAND;
+}
+
+sub MakeReverseDistanceLookup {
+  my $distanceTableRef = shift;
+  my %distanceTable = %$distanceTableRef;
+  my %reverseLookup;
+
+  # We want this to be non-redundent too
+  my @list = sort keys %distanceTable;
+  for(my $i=0;$i<@list;$i++) {
+    for(my $j=$i+1;$j<@list;$j++) {
+      $reverseLookup{$distanceTable{$list[$i]}{$list[$j]}}{"$list[$i]-$list[$j]"} = 1;
+    }
+  }
+  return \%reverseLookup;
+}
+
+sub MakeCombination {
+  my $distanceTableRef = shift;
+  my %distanceTable = %$distanceTableRef;
+  my %combi;
+
+  # We want this to be non-redundent too
+  my @list = sort keys %distanceTable;
+  for(my $i=0;$i<@list;$i++) {
+    for(my $j=$i+1;$j<@list;$j++) {
+        my $score = $distanceTable{$list[$i]}{$list[$j]};
+        $combi{"$list[$i]-$list[$j]"} = $score;
+    }
+  }
+  return \%combi;
+}
+
+
+# With exit, programme will go here
+END {
+  #CleanUp();
+}
+

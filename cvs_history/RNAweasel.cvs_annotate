@@ -1,0 +1,712 @@
+1.1          (riouxp   15-Nov-06): #!/usr/bin/perl
+1.4          (riouxp   22-Jan-07): use strict;
+1.1          (riouxp   15-Nov-06): use Term::ANSIColor;
+1.1          (riouxp   15-Nov-06): 
+1.7          (riouxp   30-Jan-07): use vars qw( $VERSION $RCS_VERSION );
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07): # Program's name and version number.
+1.10         (riouxp   23-Apr-07): $RCS_VERSION='$Id: RNAweasel,v 1.9 2007/03/12 17:21:48 riouxp Exp $';
+1.7          (riouxp   30-Jan-07): ($VERSION) = ($RCS_VERSION =~ m#,v ([\w\.]+)#);
+1.7          (riouxp   30-Jan-07): my ($BASENAME) = ($0 =~ /([^\/]+)$/);
+1.7          (riouxp   30-Jan-07): 
+1.7          (riouxp   30-Jan-07): 
+1.4          (riouxp   22-Jan-07): ###############################################
+1.4          (riouxp   22-Jan-07): # RNAweasel - questions & configuration       #
+1.4          (riouxp   22-Jan-07): ###############################################
+1.4          (riouxp   22-Jan-07): # This script allows to :                     #
+1.4          (riouxp   22-Jan-07): # - create new param file                     #
+1.4          (riouxp   22-Jan-07): # - change param file                         #
+1.4          (riouxp   22-Jan-07): # - customize options and launch RNAweasel_cl #
+1.4          (riouxp   22-Jan-07): ###############################################
+1.4          (riouxp   22-Jan-07): # Last Revision : 30/08/2006                  #
+1.4          (riouxp   22-Jan-07): # By Yann Lienhart                            #
+1.4          (riouxp   22-Jan-07): ###############################################
+1.1          (riouxp   15-Nov-06): #
+1.10         (riouxp   23-Apr-07): # $Id: RNAweasel,v 1.9 2007/03/12 17:21:48 riouxp Exp $
+1.5          (riouxp   29-Jan-07): #
+1.5          (riouxp   29-Jan-07): # $Log: RNAweasel,v $
+1.10         (riouxp   23-Apr-07): # Revision 1.9  2007/03/12 17:21:48  riouxp
+1.10         (riouxp   23-Apr-07): # Fixed bug where results where always sorted by e-value even
+1.10         (riouxp   23-Apr-07): # when not requested by user.
+1.10         (riouxp   23-Apr-07): #
+1.9          (riouxp   12-Mar-07): # Revision 1.8  2007/02/01 20:14:01  riouxp
+1.9          (riouxp   12-Mar-07): # Fixed coloring problem with one of the status messages.
+1.9          (riouxp   12-Mar-07): #
+1.8          (riouxp   01-Feb-07): # Revision 1.7  2007/01/30 22:45:13  riouxp
+1.8          (riouxp   01-Feb-07): # Esthetic changes only. Reports its version number properly.
+1.8          (riouxp   01-Feb-07): #
+1.7          (riouxp   30-Jan-07): # Revision 1.6  2007/01/30 19:52:43  riouxp
+1.7          (riouxp   30-Jan-07): # Removed spurious empty prototypes for subroutines.
+1.7          (riouxp   30-Jan-07): #
+1.6          (riouxp   30-Jan-07): # Revision 1.5  2007/01/29 20:43:18  riouxp
+1.6          (riouxp   30-Jan-07): # Adjusted printed messages as requested by Franz.
+1.6          (riouxp   30-Jan-07): #
+1.5          (riouxp   29-Jan-07): # Revision 1.4  2007/01/22 18:22:03  riouxp
+1.5          (riouxp   29-Jan-07): # Newly added. This is the REAL interactive wrapper.
+1.1          (riouxp   15-Nov-06): #
+1.1          (riouxp   15-Nov-06): 
+1.1          (riouxp   15-Nov-06): my $TRUE           = 1;
+1.1          (riouxp   15-Nov-06): my $FALSE          = 0;
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): my $TMP_DIR        = "/tmp"; #this is the default directory for temp files
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): my $REMOVEREPEATED = $TRUE;
+1.4          (riouxp   22-Jan-07): my $EVALUEFILTER   = $FALSE;
+1.1          (riouxp   15-Nov-06): my $LOWER          = 0;
+1.4          (riouxp   22-Jan-07): my $UPPER          = 100;
+1.4          (riouxp   22-Jan-07): my $USEDISTANCE    = $FALSE;
+1.4          (riouxp   22-Jan-07): my $DISTANCECUTOFF = 0;
+1.3          (riouxp   17-Nov-06): my $REITERATE      = $FALSE;
+1.4          (riouxp   22-Jan-07): my $REINJECT       = $FALSE;
+1.3          (riouxp   17-Nov-06): my $EVALUESORT     = $FALSE;
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): my $command;
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): if (@ARGV == 0)
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	print "There were no arguments passed on the command line. This program takes Erpin arguments\n\n";
+1.4          (riouxp   22-Jan-07): 	Usage();
+1.4          (riouxp   22-Jan-07): 	exit(1);
+1.4          (riouxp   22-Jan-07): }
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): #check if the user want to enter in the config mode
+1.4          (riouxp   22-Jan-07): if ($ARGV[0] =~/-config/)
+1.4          (riouxp   22-Jan-07): { 
+1.4          (riouxp   22-Jan-07): 	printParamStatus();
+1.4          (riouxp   22-Jan-07): }
+1.4          (riouxp   22-Jan-07): else 
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	#get arguments
+1.4          (riouxp   22-Jan-07): 	my $MODELFILE     = shift @ARGV;
+1.4          (riouxp   22-Jan-07): 	my $DATAFILE      = shift @ARGV;
+1.4          (riouxp   22-Jan-07): 	my @ERPINARGS     = @ARGV;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print color 'bold';
+1.7          (riouxp   30-Jan-07): 	print "\n***********************\n";
+1.7          (riouxp   30-Jan-07): 	print "**** RNAweasel $VERSION ****\n";
+1.7          (riouxp   30-Jan-07): 	print "***********************\n\n"; 
+1.4          (riouxp   22-Jan-07): 	print color 'reset';
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	$command = "RNAweasel_cl $MODELFILE $DATAFILE ";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#User interface for program options
+1.4          (riouxp   22-Jan-07): 	#28
+1.4          (riouxp   22-Jan-07): 	#$ERPIN = whichErpinVersion(\@ERPINVERSION,\@ERPINPATH);
+1.4          (riouxp   22-Jan-07): 	#$command .= "-v $ERPIN ";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#ask user if he wish to remove repeated sequences
+1.4          (riouxp   22-Jan-07): 	$REMOVEREPEATED = askRemoveRepeats();
+1.4          (riouxp   22-Jan-07): 	if (!$REMOVEREPEATED) { $command .= "-r "; }
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#ask the user if he wish to use Evalue Filtering
+1.4          (riouxp   22-Jan-07): 	$EVALUEFILTER = askEvalueFilter();
+1.4          (riouxp   22-Jan-07): 	if ($EVALUEFILTER) 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		#if yes, ask for cutoff
+1.4          (riouxp   22-Jan-07): 		($LOWER,$UPPER) = askEvalueCutOff();
+1.4          (riouxp   22-Jan-07): 		$EVALUESORT = $TRUE;
+1.4          (riouxp   22-Jan-07): 		$command .= "-ec $LOWER $UPPER ";
+1.4          (riouxp   22-Jan-07): 	}
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#Ask the user if he wish to use Phylogeny distance Filtering
+1.4          (riouxp   22-Jan-07): 	#if yes, ask for cutoff
+1.4          (riouxp   22-Jan-07): 	$USEDISTANCE = askPhylogenyFilter();
+1.4          (riouxp   22-Jan-07): 	if ($USEDISTANCE)
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		$DISTANCECUTOFF = askPhylogenyCutOff();
+1.4          (riouxp   22-Jan-07): 		$command .= "-p $DISTANCECUTOFF ";
+1.4          (riouxp   22-Jan-07): 	}
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	# Ask user if they wish to reiterate
+1.4          (riouxp   22-Jan-07): 	$REITERATE = askReiteration();
+1.4          (riouxp   22-Jan-07): 	if ( $REITERATE )
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		$REINJECT = askAppendModelToEachIteration();
+1.4          (riouxp   22-Jan-07): 		if    (!$REINJECT ) { $command .= "-i ";}
+1.4          (riouxp   22-Jan-07): 		else { $command .= "-ia ";}
+1.4          (riouxp   22-Jan-07): 	}
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	# Ask user if they wish to display by evalue or original order
+1.4          (riouxp   22-Jan-07): 	# Note: if the user is using cut offs, then the sorting must be e-value
+1.4          (riouxp   22-Jan-07): 	# So if they have already selected cutoffs, EVALUESORT has already been
+1.4          (riouxp   22-Jan-07): 	# set to TRUE
+1.9          (riouxp   12-Mar-07): 	if(!$EVALUEFILTER) { $EVALUESORT = askEvalueSorting();$command .= "-e " if $EVALUESORT;}
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	# Ask the user for a specific log dir
+1.10         (riouxp   23-Apr-07): 	my $newtmp = askUserDirNameForLogFiles();
+1.10         (riouxp   23-Apr-07): 	$command .= "-d $newtmp " if $newtmp;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	# Finish the creation of the new command line
+1.4          (riouxp   22-Jan-07): 	$command = "$command@ERPINARGS";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#print command on the screen
+1.7          (riouxp   30-Jan-07): 	print $command,"\n";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	#Launch RNAweasel_cl
+1.4          (riouxp   22-Jan-07): 	system ($command);
+1.1          (riouxp   15-Nov-06): }
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): ###########################################
+1.4          (riouxp   22-Jan-07): # Interface with User for RNAweasel       #
+1.4          (riouxp   22-Jan-07): ###########################################
+1.4          (riouxp   22-Jan-07): # This section contains functions dealing #
+1.4          (riouxp   22-Jan-07): # with the interface with the user        #
+1.4          (riouxp   22-Jan-07): ###########################################
+1.4          (riouxp   22-Jan-07): # Last Revision : 30/08/2006              #
+1.4          (riouxp   22-Jan-07): # By Yann Lienhart                        #
+1.4          (riouxp   22-Jan-07): ###########################################
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): #Check if the file in argument exist
+1.6          (riouxp   30-Jan-07): sub checkFile
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $File = shift(@_); #file name
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	if (!-e $File ) { die "Sequence file $File does not exist\n";}
+1.1          (riouxp   15-Nov-06): }
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): #Check if related programs like Erpin & distpin can be found
+1.6          (riouxp   30-Jan-07): sub checkRelatedProgs
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $ProgPath = shift(@_); #ARG - Program path
+1.4          (riouxp   22-Jan-07): 	my $ProgName = shift(@_); #ARG - Program name
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	if (!-e $ProgPath) 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07):   		die "Unable to find $ProgName at $ProgPath. Please ask your Systems Administrator to check this out\n";
+1.4          (riouxp   22-Jan-07): 	}
+1.1          (riouxp   15-Nov-06): }
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): #Function that gets the user keyboard answer 
+1.6          (riouxp   30-Jan-07): sub getUserAnswer
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $answer = <STDIN>; #get answer
+1.4          (riouxp   22-Jan-07): 	chomp($answer);
+1.4          (riouxp   22-Jan-07): 	return $answer; #return answer
+1.1          (riouxp   15-Nov-06): }
+1.1          (riouxp   15-Nov-06): 
+1.5          (riouxp   29-Jan-07): #Function which asks user if he wants to append search results to training set
+1.6          (riouxp   30-Jan-07): sub askAppendModelToEachIteration
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $DONT_APPEND_ANYTHING=0;
+1.4          (riouxp   22-Jan-07): 	my $APPEND_TO_EACH=1;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while() 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.5          (riouxp   29-Jan-07): 		print "\nDo you wish to append Erpin results to the original training set? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.5          (riouxp   29-Jan-07): 			print "\nOriginal training set will be used for all iterations\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $DONT_APPEND_ANYTHING;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.5          (riouxp   29-Jan-07): 			print "\nResults will be added to training set after each iteration\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $APPEND_TO_EACH;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.1          (riouxp   15-Nov-06): }
+1.1          (riouxp   15-Nov-06): 
+1.4          (riouxp   22-Jan-07): #function which ask user if he wanted to remove repeated sequences
+1.6          (riouxp   30-Jan-07): sub askRemoveRepeats
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $REMOVE_REPEATS = 1;
+1.4          (riouxp   22-Jan-07): 	my $DONT_REMOVE_REPEATS = 0;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while() 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.5          (riouxp   29-Jan-07): 		print "Do you wish to remove repeated sequences from the training set? (Y/N):[Y]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(Y|y)$/) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.5          (riouxp   29-Jan-07): 			print "\nRemoving repeated sequences.\n\n";
+1.8          (riouxp   01-Feb-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $REMOVE_REPEATS;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(N|n)$/) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nNot removing repeated sequences.\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $DONT_REMOVE_REPEATS;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): #function which asks user if he wanted to use the automatic reiteration system.
+1.6          (riouxp   30-Jan-07): sub askReiteration
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $REITERATE = 1;
+1.4          (riouxp   22-Jan-07): 	my $DONT_REITERATE = 0;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while() 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "Do you wish to reiterate? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nRunning Erpin only once.\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $DONT_REITERATE;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			return $REITERATE;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.4          (riouxp   22-Jan-07): 	
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): #Function which asks if the user wanted to sort results by Evalue or By original order
+1.6          (riouxp   30-Jan-07): sub askEvalueSorting
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $EVALUE_ORDER = 1;
+1.4          (riouxp   22-Jan-07): 	my $ORIGINAL_ORDER = 0;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while() 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "Do you wish to sort by E-value? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nSorting by original sequence order.\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $ORIGINAL_ORDER;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nSorting by E-value order.\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $EVALUE_ORDER;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): # Function which ask if the user wanted to use the Phylogenetic filter
+1.6          (riouxp   30-Jan-07): sub askPhylogenyFilter
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $PHYLOGENY_ON = 1;
+1.4          (riouxp   22-Jan-07): 	my $PHYLOGENY_OFF = 0;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while()
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.5          (riouxp   29-Jan-07): 		print "Do you wish to use phylogenetic distance filtering ? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nPhylogeny Filter OFF\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $PHYLOGENY_OFF; 
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nPhylogeny Filter ON\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $PHYLOGENY_ON;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.1          (riouxp   15-Nov-06): }
+1.3          (riouxp   17-Nov-06):  
+1.4          (riouxp   22-Jan-07): #Function which get and return the value of the Phylogenic Cut off
+1.6          (riouxp   30-Jan-07): sub askPhylogenyCutOff
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	while()
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "Please enter the % of sequences to eliminate : ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $cutoff_value = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if(($cutoff_value =~ m/^\d+$/) and ($cutoff_value <=  100) and ($cutoff_value >=  0)) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print "\n";
+1.4          (riouxp   22-Jan-07): 			return $cutoff_value;
+1.4          (riouxp   22-Jan-07): 		}
+1.3          (riouxp   17-Nov-06): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): #Function which asks if the user wanted to use the Evalue Filter
+1.6          (riouxp   30-Jan-07): sub askEvalueFilter
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $EVALUE_FILTER_ON  = 1;
+1.4          (riouxp   22-Jan-07): 	my $EVALUE_FILTER_OFF = 0;
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	while()
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "Do you wish to use Evalue Filtering ? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nEvalue Filter OFF\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $EVALUE_FILTER_OFF; 
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nEvalue Filter ON\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $EVALUE_FILTER_ON;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.4          (riouxp   22-Jan-07): #Function which gets and return the lower and the upper Evalue cut off percentage
+1.6          (riouxp   30-Jan-07): sub askEvalueCutOff
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my ($LOWER,$UPPER);
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	LOW: while ()
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.5          (riouxp   29-Jan-07): 		print "Please enter the lower Evalue cutoff in % (0 means worst solution) : ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^\d+$/) and ($answer >=  0) and ($answer <= 100) ) 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			$LOWER = $answer;
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 			UP: while ()
+1.4          (riouxp   22-Jan-07): 			{
+1.4          (riouxp   22-Jan-07): 				print color 'bold';
+1.5          (riouxp   29-Jan-07): 				print "Please enter the upper Evalue cutoff in % : ";
+1.4          (riouxp   22-Jan-07): 				print color 'reset';
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 				$answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 				
+1.4          (riouxp   22-Jan-07): 				if( ($answer =~ m/^\d+$/) and ($answer <=  100) and ($answer > $LOWER) ) 
+1.4          (riouxp   22-Jan-07): 				{
+1.4          (riouxp   22-Jan-07): 					$UPPER = $answer;
+1.4          (riouxp   22-Jan-07): 					last LOW;
+1.4          (riouxp   22-Jan-07): 				}
+1.4          (riouxp   22-Jan-07): 				else 
+1.4          (riouxp   22-Jan-07): 				{
+1.4          (riouxp   22-Jan-07): 					print color 'red';
+1.4          (riouxp   22-Jan-07): 					print "Value must be less than 100 and greater than $LOWER\n";
+1.4          (riouxp   22-Jan-07): 					print color 'reset';
+1.4          (riouxp   22-Jan-07): 					next UP;
+1.4          (riouxp   22-Jan-07): 				}
+1.4          (riouxp   22-Jan-07): 			}
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		else 
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'red';
+1.4          (riouxp   22-Jan-07): 			print "Value must be greater than 0 and less than 100\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			next LOW;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 	}
+1.4          (riouxp   22-Jan-07): 	print "\n";
+1.4          (riouxp   22-Jan-07): 	return ( $LOWER, $UPPER );
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): # Function which asks user if he wants to conserve tempfiles
+1.6          (riouxp   30-Jan-07): sub askUserDirNameForLogFiles
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	while() 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "Do you wish to specify a directory name for log files ? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.10         (riouxp   23-Apr-07):                     #print color 'green';
+1.10         (riouxp   23-Apr-07):                     #print "\nLog files are created in /tmp and discarded later on.\n\n";
+1.10         (riouxp   23-Apr-07):                     #print color 'reset';
+1.10         (riouxp   23-Apr-07):                     return undef;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print color 'bold';
+1.4          (riouxp   22-Jan-07): 			print  "\nPlease Enter the name of the directory for log and temporary files : ";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			$answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 			print color 'green';
+1.4          (riouxp   22-Jan-07): 			print "\nLog files in $answer\n\n";
+1.4          (riouxp   22-Jan-07): 			print color 'reset';
+1.4          (riouxp   22-Jan-07): 			return $answer;
+1.4          (riouxp   22-Jan-07): 		}
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.4          (riouxp   22-Jan-07): ##########################
+1.4          (riouxp   22-Jan-07): ## CONFIGURATION MODULE ##
+1.4          (riouxp   22-Jan-07): ##########################
+1.4          (riouxp   22-Jan-07):  
+1.4          (riouxp   22-Jan-07): # Main function for this module
+1.4          (riouxp   22-Jan-07): # Here we print the current status (no paramaters | current parameters)
+1.4          (riouxp   22-Jan-07): # Then we ask the user if he wanted to create/change parameters
+1.6          (riouxp   30-Jan-07): sub printParamStatus
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $paramfile = $ENV{HOME}."/.RNAweasel";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print "\nRNAweasel CONFIGURATION Module\n\n";
+1.4          (riouxp   22-Jan-07): 	print "RNAweasel can work with a parameter file. By asking for \"configuration mode\", you can create or change your own parameters.\n\n";
+1.4          (riouxp   22-Jan-07): 	print "Current status : ";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 	if (!-e $paramfile) 
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print "No parameter file available for this user\n";
+1.4          (riouxp   22-Jan-07): 		while ()
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print "\nDo you want to create a new parameters file (Y/N) ?";
+1.4          (riouxp   22-Jan-07): 			my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 			if( $answer =~ m/^(N|n)$/ ) 
+1.4          (riouxp   22-Jan-07): 			{
+1.4          (riouxp   22-Jan-07): 				print color 'green';
+1.4          (riouxp   22-Jan-07): 				print "\nSkip creation - no paramaters file available\n\n";
+1.4          (riouxp   22-Jan-07): 				print color 'reset';last;
+1.4          (riouxp   22-Jan-07): 			}
+1.4          (riouxp   22-Jan-07): 			elsif( ($answer =~ m/^(Y|y)$/) ) 
+1.4          (riouxp   22-Jan-07): 			{
+1.4          (riouxp   22-Jan-07): 				createNewParamFile();last;
+1.4          (riouxp   22-Jan-07): 			}
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 		}
+1.3          (riouxp   17-Nov-06): 	}
+1.4          (riouxp   22-Jan-07): 	else
+1.4          (riouxp   22-Jan-07): 	{
+1.4          (riouxp   22-Jan-07): 		print color 'blue';
+1.4          (riouxp   22-Jan-07): 		print color 'bold';
+1.4          (riouxp   22-Jan-07): 		print "\nParameters File exists for this user.\n\nCurrent parameters :\n";
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		open (PARAM,$paramfile) or die ("Unable to open $paramfile\n");
+1.4          (riouxp   22-Jan-07): 		my @file = <PARAM>;
+1.4          (riouxp   22-Jan-07): 		close PARAM;
+1.4          (riouxp   22-Jan-07): 		print @file;
+1.4          (riouxp   22-Jan-07): 		print color 'reset';
+1.4          (riouxp   22-Jan-07): 		
+1.4          (riouxp   22-Jan-07): 		while ()
+1.4          (riouxp   22-Jan-07): 		{
+1.4          (riouxp   22-Jan-07): 			print "\nDo you want to change those parameters (Y/N) ?";
+1.4          (riouxp   22-Jan-07): 			my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 			if( $answer =~ m/^(N|n)$/ ) 
+1.4          (riouxp   22-Jan-07): 			{
+1.4          (riouxp   22-Jan-07): 				print color 'green';
+1.4          (riouxp   22-Jan-07): 				print "\nCurrent parameters in use\n\n";
+1.4          (riouxp   22-Jan-07): 				print color 'reset';last;
+1.4          (riouxp   22-Jan-07): 			}
+1.4          (riouxp   22-Jan-07): 			elsif( ($answer =~ m/^(Y|y)$/) ) 
+1.4          (riouxp   22-Jan-07): 			{
+1.4          (riouxp   22-Jan-07): 				createNewParamFile();last;
+1.4          (riouxp   22-Jan-07): 			}
+1.4          (riouxp   22-Jan-07): 			
+1.4          (riouxp   22-Jan-07): 		}
+1.3          (riouxp   17-Nov-06): 	}
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.5          (riouxp   29-Jan-07): # Function which allows user to create a new parameter file
+1.6          (riouxp   30-Jan-07): sub createNewParamFile
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	my $answer;
+1.4          (riouxp   22-Jan-07): 	my $paramfile = $ENV{HOME}."/.RNAweasel";
+1.4          (riouxp   22-Jan-07): 	open (PARAM,">$paramfile") or die ("Unable to create $paramfile\n");
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print PARAM ">ERPIN_PATH\n";
+1.5          (riouxp   29-Jan-07): 	print "Please enter complete path for Erpin: ";
+1.4          (riouxp   22-Jan-07): 	$answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 	print PARAM "$answer\n";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print PARAM ">DISTPIN\n";
+1.5          (riouxp   29-Jan-07): 	print "Please enter complete path for distpin: ";
+1.4          (riouxp   22-Jan-07): 	$answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 	print PARAM "$answer\n";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print PARAM ">MF2FASTA\n";
+1.5          (riouxp   29-Jan-07): 	print "Please enter complete path for mf2fasta: ";
+1.4          (riouxp   22-Jan-07): 	$answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): 	print PARAM "$answer\n";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print PARAM "END\n";	
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.4          (riouxp   22-Jan-07): ###################
+1.4          (riouxp   22-Jan-07): ## Help function ##
+1.4          (riouxp   22-Jan-07): ###################
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): #this function is printed if the user do not gives any argument
+1.4          (riouxp   22-Jan-07): sub Usage
+1.4          (riouxp   22-Jan-07): {
+1.4          (riouxp   22-Jan-07): 	print color 'bold';
+1.4          (riouxp   22-Jan-07): 	print "\nHow to - RNAweasel - Questions Version\n\n";
+1.4          (riouxp   22-Jan-07): 	print "Syntax :";
+1.4          (riouxp   22-Jan-07): 	print color 'reset';
+1.4          (riouxp   22-Jan-07): 	print "RNAweasel training_set_file sequences_files [ERPIN parameters]\n\n";
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	print color 'bold';
+1.4          (riouxp   22-Jan-07): 	print "Access to the configuration module :\nRNAweasel -config\n\n";
+1.4          (riouxp   22-Jan-07): 	print color 'reset';
+1.4          (riouxp   22-Jan-07): 	
+1.4          (riouxp   22-Jan-07): 	exit(1);
+1.3          (riouxp   17-Nov-06): }
+1.3          (riouxp   17-Nov-06): 
+1.4          (riouxp   22-Jan-07): #########################################
+1.4          (riouxp   22-Jan-07): ## Function which are not used anymore ##
+1.4          (riouxp   22-Jan-07): #########################################
+1.4          (riouxp   22-Jan-07): 
+1.5          (riouxp   29-Jan-07): #Function which asks if the user wanted to do a full alignment.
+1.4          (riouxp   22-Jan-07): #When he use an Evalue Filter, the cut off selection is also applicated to the last created model.
+1.4          (riouxp   22-Jan-07): #If the user wanted a full alignment, he can choose to do another pass of model creation without the Evalue cut off.
+1.4          (riouxp   22-Jan-07): #This is usefull when you reiterate the process, for example when there is 10 times new values and new model.
+1.4          (riouxp   22-Jan-07): #For each iteration, the evalue cut off is used, so you only work with the best results.
+1.4          (riouxp   22-Jan-07): #For the final model, by selecting full alignment, you ignore this evalue you used fr the research and create a model with all the solutions.
+1.6          (riouxp   30-Jan-07): #sub askFullAlignment
+1.4          (riouxp   22-Jan-07): #{
+1.4          (riouxp   22-Jan-07): #	my $WRITE_FULL_ALIGNMENT = 1;
+1.4          (riouxp   22-Jan-07): #	my $DONT_WRITE_FULL_ALIGNMENT = 0;
+1.4          (riouxp   22-Jan-07): #	
+1.4          (riouxp   22-Jan-07): #	while() 
+1.4          (riouxp   22-Jan-07): #	{
+1.4          (riouxp   22-Jan-07): #		print color 'bold';
+1.4          (riouxp   22-Jan-07): #		print "Do you wish to write out the full alignment also ? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): #		print color 'reset';
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			print color 'green';
+1.4          (riouxp   22-Jan-07): #			print "\nOnly writing out Erpin only once\n\n";
+1.4          (riouxp   22-Jan-07): #			print color 'reset';
+1.4          (riouxp   22-Jan-07): #			return $DONT_WRITE_FULL_ALIGNMENT; 
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			print color 'green';
+1.4          (riouxp   22-Jan-07): #			print "\nWriting Full Alignment\n\n";
+1.4          (riouxp   22-Jan-07): #			print color 'reset';
+1.4          (riouxp   22-Jan-07): #			return $WRITE_FULL_ALIGNMENT;
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #	}
+1.4          (riouxp   22-Jan-07): #}
+1.4          (riouxp   22-Jan-07): 
+1.4          (riouxp   22-Jan-07): #Erpin error when no results
+1.6          (riouxp   30-Jan-07): #sub noErpinResultError
+1.4          (riouxp   22-Jan-07): #{
+1.4          (riouxp   22-Jan-07): #	print color 'red';
+1.4          (riouxp   22-Jan-07): #	print "****************************************\n";
+1.4          (riouxp   22-Jan-07): #	print "* There was a problem running Erpin!!! *\n";
+1.4          (riouxp   22-Jan-07): #	print "*  Erpin did not produce any output.   *\n";
+1.4          (riouxp   22-Jan-07): #	print "*  Please try running an alternative   *\n";
+1.4          (riouxp   22-Jan-07): #	print "*          version of Erpin            *\n";
+1.4          (riouxp   22-Jan-07): #	print "****************************************\n"; 
+1.4          (riouxp   22-Jan-07): #	print color 'reset';
+1.4          (riouxp   22-Jan-07): #	exit(1);
+1.4          (riouxp   22-Jan-07): #}
+1.4          (riouxp   22-Jan-07): 
+1.5          (riouxp   29-Jan-07): #Function which asks user which version of erpin he wants to run
+1.6          (riouxp   30-Jan-07): #sub whichErpinVersion
+1.4          (riouxp   22-Jan-07): #{
+1.4          (riouxp   22-Jan-07): #	my ($ERPINVERSION) = shift(@_);
+1.4          (riouxp   22-Jan-07): #	my ($ERPINPATH) = shift(@_);
+1.4          (riouxp   22-Jan-07): #	my $ERPIN;
+1.4          (riouxp   22-Jan-07): #	
+1.4          (riouxp   22-Jan-07): #	while() 
+1.4          (riouxp   22-Jan-07): #	{
+1.4          (riouxp   22-Jan-07): #		print color 'bold';
+1.4          (riouxp   22-Jan-07): #		print "Which version of Erpin do you wish to use?\n";
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		#print all the different version at screen
+1.4          (riouxp   22-Jan-07): #		for(my $i=0; $i<@$ERPINVERSION;$i++) 
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			print "  $i)" . @$ERPINVERSION[$i] . "\n";
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #		print "\n[default 0]: ";
+1.4          (riouxp   22-Jan-07): #		print color 'reset';
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		#check if the answer is correct, print user choice a screen
+1.4          (riouxp   22-Jan-07): #		if(($answer =~ m/^$/) or (($answer >= 0) and ($answer < scalar(@$ERPINVERSION)))) 
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			$ERPIN = @$ERPINPATH[$answer];
+1.4          (riouxp   22-Jan-07): #			print color 'green';
+1.4          (riouxp   22-Jan-07): #			print "\nUsing the version @$ERPINVERSION[$answer]\n\n";
+1.4          (riouxp   22-Jan-07): #			print color 'reset';
+1.4          (riouxp   22-Jan-07): #			last;
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #	}
+1.4          (riouxp   22-Jan-07): #	return $ERPIN;# returns the path of the used version
+1.4          (riouxp   22-Jan-07): #}
+1.4          (riouxp   22-Jan-07): 
+1.5          (riouxp   29-Jan-07): #Function which asks user if he wanted to search Evalue for the training set.
+1.4          (riouxp   22-Jan-07): #When you started with a new training set, perhaps you wanted to apply at the beginning an evalue filter before running erpin.
+1.4          (riouxp   22-Jan-07): #By answering yes to this question, the programs search evalue for the training set, and apply the filter on it.
+1.6          (riouxp   30-Jan-07): #sub askSearchTrainingSetEvalue
+1.4          (riouxp   22-Jan-07): #{
+1.4          (riouxp   22-Jan-07): #	my $SEARCH_EVALUE = 1;
+1.4          (riouxp   22-Jan-07): #	my $DONT_SEARCH_EVALUE = 0;
+1.4          (riouxp   22-Jan-07): #	
+1.4          (riouxp   22-Jan-07): #	while() 
+1.4          (riouxp   22-Jan-07): #	{
+1.4          (riouxp   22-Jan-07): #		print color 'bold';
+1.4          (riouxp   22-Jan-07): #		print "Do you wish to search Evalue for your training set ? (Y/N):[N]: ";
+1.4          (riouxp   22-Jan-07): #		print color 'reset';
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		my $answer = getUserAnswer();
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #		if( ($answer =~ m/^$/) or ($answer =~ m/^(N|n)$/) )
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			print color 'green';
+1.4          (riouxp   22-Jan-07): #			print "\nEvalue search disabled on training set\n\n";
+1.4          (riouxp   22-Jan-07): #			print color 'reset';
+1.4          (riouxp   22-Jan-07): #			return $DONT_SEARCH_EVALUE; 
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #		elsif( ($answer =~ m/^(Y|y)$/) )
+1.4          (riouxp   22-Jan-07): #		{
+1.4          (riouxp   22-Jan-07): #			print color 'green';
+1.4          (riouxp   22-Jan-07): #			print "\nSearching Evalues for training set and use Evalues Cut off on it\n\n";
+1.4          (riouxp   22-Jan-07): #			print color 'reset';
+1.4          (riouxp   22-Jan-07): #			return $SEARCH_EVALUE;
+1.4          (riouxp   22-Jan-07): #		}
+1.4          (riouxp   22-Jan-07): #		
+1.4          (riouxp   22-Jan-07): #	}
+1.4          (riouxp   22-Jan-07): #}
+1.4          (riouxp   22-Jan-07):   
